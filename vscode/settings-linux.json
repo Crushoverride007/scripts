@@ -1,0 +1,75 @@
+{
+  "terminal.integrated.env.linux": {
+    "FIG_NEW_SESSION": "1"
+  },
+
+  // Editor
+  "editor.fontSize": 14,
+  "editor.accessibilitySupport": "off",
+  "editor.fontFamily": "Hack Nerd Font",
+  "editor.wordWrap": "on",
+  "editor.minimap.enabled": false,
+  "editor.scrollbar.horizontal": "hidden",
+  "editor.scrollbar.vertical": "hidden",
+
+  "projectManager.git.baseFolders": [
+    "/home/$(whoami)/Documents/github"
+  ],
+  "powershell.promptToUpdatePowerShell": false,
+
+  // Parallels (removed as not applicable on Linux)
+
+  // Github Copilot
+  "github.copilot.editor.enableAutoCompletions": true,
+
+  // Terminal
+  "terminal.integrated.fontWeight": "normal",
+  "terminal.integrated.defaultProfile.linux": "bash",
+  "terminal.integrated.fontFamily": "Hack Nerd Font",
+  "terminal.integrated.fontSize": 14,
+  "terminal.integrated.lineHeight": 1.2,
+  "terminal.integrated.letterSpacing": 0,
+
+  // Workbench
+  "workbench.sideBar.location": "right",
+  "workbench.statusBar.visible": false,
+  "workbench.editor.showTabs": "single",
+  "workbench.activityBar.location": "hidden",
+  "workbench.editor.enablePreview": false,
+  "workbench.iconTheme": "material-icon-theme",
+  "workbench.startupEditor": "none",
+  "workbench.layoutControl.enabled": false,
+
+  // Window
+  "window.zoomLevel": 1,
+  "window.titleSeparator": " ~ ",
+  "window.dialogStyle": "custom",
+  "window.titleBarStyle": "native",
+  "window.menuBarVisibility": "toggle",
+  "window.customTitleBarVisibility": "never",
+  "window.commandCenter": false,
+
+  // Custom UI (removed macOS-specific styling)
+
+  // Miscellaneous
+  "explorer.compactFolders": false,
+  "explorer.confirmDelete": false,
+  "breadcrumbs.enabled": false,
+  "outline.collapseItems": "alwaysCollapse",
+  "zenMode.showTabs": "single",
+
+  // APCs (removed macOS-specific styles)
+
+  "application.shellEnvironmentResolutionTimeout": 100,
+  "telemetry.telemetryLevel": "off",
+  "workbench.colorTheme": "Tomorrow Night Blue",
+  "workbench.colorCustomizations": {
+    "terminal.background": "#00000000"
+  },
+  "workbench.settings.applyToAllProfiles": [],
+  "security.workspace.trust.untrustedFiles": "open",
+  "git.enableSmartCommit": true,
+  "git.confirmSync": false,
+  "terminal.integrated.gpuAcceleration": "off",
+  "vsicons.dontShowNewVersionMessage": true
+}

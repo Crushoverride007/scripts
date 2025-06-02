@@ -1,0 +1,12 @@
+2025-05-20 00:47:22,623 DEBUG    root            Loaded Command Group: ['gcloud', 'projects']
+2025-05-20 00:47:22,628 DEBUG    root            Loaded Command Group: ['gcloud', 'projects', 'describe']
+2025-05-20 00:47:22,628 DEBUG    root            Running [gcloud.projects.describe] with arguments: [--account: "mouhcine.origin@gmail.com", --configuration: "lab-1", --format: "value(name)", PROJECT_ID_OR_NUMBER: "mainproject-lab"]
+2025-05-20 00:47:22,809 DEBUG    google.auth.transport.requests Making request: POST https://oauth2.googleapis.com/token
+2025-05-20 00:47:22,817 DEBUG    urllib3.connectionpool Starting new HTTPS connection (1): oauth2.googleapis.com:443
+2025-05-20 00:47:23,166 DEBUG    urllib3.connectionpool https://oauth2.googleapis.com:443 "POST /token HTTP/1.1" 200 None
+2025-05-20 00:47:23,185 DEBUG    urllib3.connectionpool Starting new HTTPS connection (1): cloudresourcemanager.googleapis.com:443
+2025-05-20 00:47:24,154 DEBUG    urllib3.connectionpool https://cloudresourcemanager.googleapis.com:443 "GET /v1/projects/mainproject-lab?alt=json HTTP/1.1" 200 None
+2025-05-20 00:47:24,158 DEBUG    root            Chosen display Format:default value(name)
+2025-05-20 00:47:24,159 INFO     root            Display format: "default value(name)"
+2025-05-20 00:47:24,194 INFO     ___FILE_ONLY___ MainProject-Lab
+

@@ -1,0 +1,60 @@
+2022-12-08 09:18:07 INFO logger.py:126 Log level: INFO
+2022-12-08 09:18:07 INFO main.py:259 GNS3 GUI version 2.2.35.1
+2022-12-08 09:18:07 INFO main.py:260 Copyright (c) 2007-2022 GNS3 Technologies Inc.
+2022-12-08 09:18:07 INFO main.py:261 Application started with /Applications/GNS3.app/Contents/MacOS/gns3
+2022-12-08 09:18:17 INFO sudo.py:54 Execute as admin: osascript -e do shell script "chown root:admin /Applications/GNS3.app/Contents/MacOS/ubridge && chmod 4750 /Applications/GNS3.app/Contents/MacOS/ubridge" with administrator privileges
+2022-12-08 09:18:20 CRITICAL progress_dialog.py:181 WaitForCommandWorker thread stopping with an error: Could not execute command "osascript -e 'do shell script "chown root:admin /Applications/GNS3.app/Contents/MacOS/ubridge && chmod 4750 /Applications/GNS3.app/Contents/MacOS/ubridge" with administrator privileges'": Command '['osascript', '-e', 'do shell script "chown root:admin /Applications/GNS3.app/Contents/MacOS/ubridge && chmod 4750 /Applications/GNS3.app/Contents/MacOS/ubridge" with administrator privileges']' returned non-zero exit status 1.
+2022-12-08 09:18:20 CRITICAL __init__.py:183 Could not execute command "osascript -e 'do shell script "chown root:admin /Applications/GNS3.app/Contents/MacOS/ubridge && chmod 4750 /Applications/GNS3.app/Contents/MacOS/ubridge" with administrator privileges'": Command '['osascript', '-e', 'do shell script "chown root:admin /Applications/GNS3.app/Contents/MacOS/ubridge && chmod 4750 /Applications/GNS3.app/Contents/MacOS/ubridge" with administrator privileges']' returned non-zero exit status 1.
+2022-12-08 09:48:57 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 09:48:57 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 09:49:27 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 09:49:27 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 09:49:57 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 09:49:57 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 09:50:27 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 09:50:27 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 09:50:57 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 09:50:57 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 09:51:27 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 09:51:27 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 09:51:57 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 09:51:57 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 09:52:27 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 09:52:27 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 09:52:57 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 09:52:57 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 09:53:27 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 09:53:27 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 09:53:57 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 09:53:57 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 09:54:27 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 09:54:27 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 09:54:57 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 09:54:57 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 09:55:27 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 09:55:27 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 09:55:57 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 09:55:57 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 09:56:27 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 09:56:27 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 09:56:57 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 09:56:57 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 09:57:28 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 09:57:28 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 09:57:58 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 09:57:58 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 09:58:28 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 09:58:28 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 09:58:58 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 09:58:58 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 09:59:28 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 09:59:28 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 09:59:58 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 09:59:58 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 10:00:28 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 10:00:28 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 10:00:58 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 10:00:58 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 10:01:28 WARNING http_client.py:639 Timeout after 30 seconds for request http://admin@localhost:3080/v2/computes. Please check the connection is not blocked by a firewall or an anti-virus.
+2022-12-08 10:01:28 ERROR compute_manager.py:96 Error while getting compute list: Operation timeout
+2022-12-08 10:10:36 INFO main.py:289 Signal received exiting the application

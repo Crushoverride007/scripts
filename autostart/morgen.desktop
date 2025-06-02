@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Morgen
+Comment=Morgen Startup Script
+Exec=/private/var/folders/_3/8sb8k1_j1g79sljqxjxbqyrc0000gn/T/AppTranslocation/3BD74134-1B9C-4604-B93B-AE9B0160B096/d/Morgen.app/Contents/MacOS/Morgen --hidden
+StartupNotify=false
+Terminal=false

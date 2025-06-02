@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../src/new_story.tsx"],
+  "sourcesContent": ["import { open } from \"@raycast/api\";\n\nexport default async function NewStory() {\n  await open(`https://hashnode.com/create/story?title=${encodeURIComponent(\"Created from Raycast \u26A1\uFE0F\")}`);\n}\n"],
+  "mappings": "yaAAA,IAAAA,EAAA,GAAAC,EAAAD,EAAA,aAAAE,IAAA,eAAAC,EAAAH,GAAA,IAAAI,EAAqB,wBAErB,eAAOF,GAAkC,CACvC,QAAM,QAAK,2CAA2C,mBAAmB,mCAAyB,CAAC,EAAE,CACvG",
+  "names": ["new_story_exports", "__export", "NewStory", "__toCommonJS", "import_api"]
+}

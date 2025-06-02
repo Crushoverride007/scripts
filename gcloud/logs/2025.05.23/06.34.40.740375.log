@@ -1,0 +1,9 @@
+2025-05-23 06:34:40,754 DEBUG    root            Loaded Command Group: ['gcloud', 'projects']
+2025-05-23 06:34:40,759 DEBUG    root            Loaded Command Group: ['gcloud', 'projects', 'describe']
+2025-05-23 06:34:40,760 DEBUG    root            Running [gcloud.projects.describe] with arguments: [--account: "mouhcine.origin@gmail.com", --configuration: "lab-1", --format: "value(name)", PROJECT_ID_OR_NUMBER: "mainproject-lab"]
+2025-05-23 06:34:40,786 DEBUG    urllib3.connectionpool Starting new HTTPS connection (1): cloudresourcemanager.googleapis.com:443
+2025-05-23 06:34:41,559 DEBUG    urllib3.connectionpool https://cloudresourcemanager.googleapis.com:443 "GET /v1/projects/mainproject-lab?alt=json HTTP/1.1" 200 None
+2025-05-23 06:34:41,562 DEBUG    root            Chosen display Format:default value(name)
+2025-05-23 06:34:41,563 INFO     root            Display format: "default value(name)"
+2025-05-23 06:34:41,606 INFO     ___FILE_ONLY___ MainProject-Lab
+

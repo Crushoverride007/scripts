@@ -1,0 +1,17 @@
+2025-05-31 23:47:06,507 DEBUG    root            Loaded Command Group: ['gcloud', 'projects']
+2025-05-31 23:47:06,511 DEBUG    root            Loaded Command Group: ['gcloud', 'projects', 'describe']
+2025-05-31 23:47:06,512 DEBUG    root            Running [gcloud.projects.describe] with arguments: [--account: "mouhcine.origin@gmail.com", --configuration: "lab-1", --format: "value(name)", PROJECT_ID_OR_NUMBER: "mainproject-lab"]
+2025-05-31 23:47:06,653 DEBUG    google.auth.transport.requests Making request: POST https://oauth2.googleapis.com/token
+2025-05-31 23:47:06,660 DEBUG    urllib3.connectionpool Starting new HTTPS connection (1): oauth2.googleapis.com:443
+2025-05-31 23:47:06,972 DEBUG    urllib3.connectionpool https://oauth2.googleapis.com:443 "POST /token HTTP/1.1" 200 None
+2025-05-31 23:47:06,992 DEBUG    urllib3.connectionpool Starting new HTTPS connection (1): cloudresourcemanager.googleapis.com:443
+2025-05-31 23:47:07,915 DEBUG    urllib3.connectionpool https://cloudresourcemanager.googleapis.com:443 "GET /v1/projects/mainproject-lab?alt=json HTTP/1.1" 200 None
+2025-05-31 23:47:07,919 DEBUG    root            Chosen display Format:default value(name)
+2025-05-31 23:47:07,920 INFO     root            Display format: "default value(name)"
+2025-05-31 23:47:07,975 INFO     ___FILE_ONLY___ MainProject-Lab
+
+2025-05-31 23:47:07,976 DEBUG    root            Checking for updates...
+2025-05-31 23:47:07,979 DEBUG    urllib3.connectionpool Starting new HTTPS connection (1): dl.google.com:443
+2025-05-31 23:47:08,250 DEBUG    urllib3.connectionpool https://dl.google.com:443 "GET /dl/cloudsdk/channels/rapid/components-2.json HTTP/1.1" 200 233994
+2025-05-31 23:47:08,410 DEBUG    root            Updating notification cache...
+2025-05-31 23:47:08,410 DEBUG    root            Activating notification: [default]

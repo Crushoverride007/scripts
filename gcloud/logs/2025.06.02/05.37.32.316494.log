@@ -1,0 +1,8 @@
+2025-06-02 05:37:32,318 DEBUG    root            Loaded Command Group: ['gcloud', 'config']
+2025-06-02 05:37:32,319 DEBUG    root            Loaded Command Group: ['gcloud', 'config', 'configurations']
+2025-06-02 05:37:32,322 DEBUG    root            Loaded Command Group: ['gcloud', 'config', 'configurations', 'describe']
+2025-06-02 05:37:32,324 DEBUG    root            Running [gcloud.config.configurations.describe] with arguments: [--format: "value[separator=""](properties.core.account,properties.core.project)", CONFIGURATION_NAME: "lab-1"]
+2025-06-02 05:37:32,325 DEBUG    root            Chosen display Format:default value[separator=""](properties.core.account,properties.core.project)
+2025-06-02 05:37:32,325 INFO     root            Display format: "default value[separator=""](properties.core.account,properties.core.project)"
+2025-06-02 05:37:32,362 INFO     ___FILE_ONLY___ mouhcine.origin@gmail.commainproject-lab
+

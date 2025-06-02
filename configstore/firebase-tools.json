@@ -1,0 +1,71 @@
+{
+	"motd": {
+		"cloudBuildErrorAfter": 1594252800000,
+		"cloudBuildWarnAfter": 1590019200000,
+		"defaultNode10After": 1594252800000,
+		"minVersion": "3.0.5",
+		"node8DeploysDisabledAfter": 1613390400000,
+		"node8RuntimeDisabledAfter": 1615809600000,
+		"node8WarnAfter": 1600128000000,
+		"fetched": 1675674539787
+	},
+	"activeProjects": {
+		"/Users/senkvs/Documents/GitHub/serverless-naruto-app": "infracloud-tp1",
+		"/Users/senkvs/Documents/GitHub/serverless-naruto-app2": "infracloud-tp1",
+		"/Users/senkvs/Documents/GitHub/infracloud": "naruto-cloud",
+		"/Users/senkvs/Documents/GitHub/angularfirebase-authentication": "testprod-cloud",
+		"/Users/senkvs/Documents/GitHub/TP1": "tp1-cloudinfra",
+		"/Users/senkvs/Documents/GitHub/cloud-function": "tp1-cloudinfra",
+		"/Users/senkvs/Documents/GitHub": "tp1-cloudinfra",
+		"/Users/senkvs/Desktop/cloud-functions": "tp1-cloudinfra"
+	},
+	"emulator-analytics-clientId": "23d0a070-945a-4045-b01d-8ca97e9dfa37",
+	"adminsdkconfig": {
+		"infra-cloud-yn": {
+			"projectId": "infra-cloud-yn",
+			"databaseURL": "https://infra-cloud-yn-default-rtdb.europe-west1.firebasedatabase.app",
+			"storageBucket": "infra-cloud-yn.appspot.com"
+		}
+	},
+	"webconfig": {
+		"infra-cloud-yn": {
+			"projectId": "infra-cloud-yn",
+			"appId": "1:1022465454186:web:6f29db58adc08130f31a13",
+			"databaseURL": "https://infra-cloud-yn-default-rtdb.europe-west1.firebasedatabase.app",
+			"storageBucket": "infra-cloud-yn.appspot.com",
+			"apiKey": "AIzaSyAUYjeErytGXtP-kC-vHzrCT8-gUJLwr20",
+			"authDomain": "infra-cloud-yn.firebaseapp.com",
+			"messagingSenderId": "1022465454186",
+			"measurementId": "G-K5D87EJMGZ"
+		}
+	},
+	"previews": {
+		"webframeworks": true
+	},
+	"additionalAccounts": [],
+	"activeAccounts": {},
+	"analytics-uuid": "4692b706-cdf8-4ec4-8815-d0f6d2462432",
+	"usage": true,
+	"user": {
+		"iss": "accounts.google.com",
+		"azp": "563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com",
+		"aud": "563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com",
+		"sub": "111443195150104959432",
+		"email": "mouhcine.mesmouki7@gmail.com",
+		"email_verified": true,
+		"at_hash": "BvS6qR2juEwVDw5xDTHjJw",
+		"iat": 1674171553,
+		"exp": 1674175153
+	},
+	"tokens": {
+		"expires_at": 1675678142334,
+		"refresh_token": "1//03t6KZHFAsJYFCgYIARAAGAMSNwF-L9IrJdc8ZWudrATqp3343xu89oJbv_FVBRMvwiNdmTaVGk3RLjAAD1A1zA2seWjjINHMbGc",
+		"scopes": [],
+		"access_token": "ya29.a0AVvZVspAhjssoKytF5zttuwK4KxjfwehfFZ_9q7loPoZJGh1fOb426XjZlZmtF4VHnLvUGaYT08GyQutZE8msrqLNFm5icpAJa0zm3SAr6huWcD66TPb-KV69FBegMnMor1Ko3YqYV8rRdZGLPeHVKKz-1zisdMg8oFW2gaCgYKARASAQASFQGbdwaIV2DcxmYm5delQ37Bdq22Ew0173",
+		"expires_in": 3599,
+		"scope": "https://www.googleapis.com/auth/firebase https://www.googleapis.com/auth/cloud-platform openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/cloudplatformprojects.readonly",
+		"token_type": "Bearer",
+		"id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjI3NDA1MmEyYjY0NDg3NDU3NjRlNzJjMzU5MDk3MWQ5MGNmYjU4NWEiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJhY2NvdW50cy5nb29nbGUuY29tIiwiYXpwIjoiNTYzNTg0MzM1ODY5LWZncmhnbWQ0N2JxbmVraWo1aThiNXByMDNobzg0OWU2LmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwiYXVkIjoiNTYzNTg0MzM1ODY5LWZncmhnbWQ0N2JxbmVraWo1aThiNXByMDNobzg0OWU2LmFwcHMuZ29vZ2xldXNlcmNvbnRlbnQuY29tIiwic3ViIjoiMTExNDQzMTk1MTUwMTA0OTU5NDMyIiwiZW1haWwiOiJtb3VoY2luZS5tZXNtb3VraTdAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImF0X2hhc2giOiJyWUJhZ2ktYm5Fek1LT2lEQ00tU3d3IiwiaWF0IjoxNjc1Njc0NTQ3LCJleHAiOjE2NzU2NzgxNDd9.s68gwu-HVzdV1hrFXSFLPWRbpYW45q4AGvL_81GIY4PP-mh3Hw944m2SlOHZ9K-t0AaP23l8RW0dDLXklrVLwpTcKYg0RvslGAnTClJ_jGWj1JtWn04WM-53kuaIoV-M90zn78j-zvlb9Rk3Z0sYufX_voHN3XeRDnL88OqsCrURrq-pVAYNPtrMzjn6ujgmLfmF4HqBsWVDVEuHFb6wztzu_LDfB9uEcA-MKcyRfDDA6LOrLb5-vBa3UAHffc0DY13-RCE5iA2S3E4jUOqTlDlkdjxKdWxNWDtwv4aujoAPXZOK4lzJf-qY6vR0uPGdk8RTfrLEjFE0PdMPojbH8A"
+	},
+	"lastError": 1675674544106
+}

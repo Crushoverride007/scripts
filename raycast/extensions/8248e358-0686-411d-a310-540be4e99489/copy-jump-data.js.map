@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../src/copy-jump-data.ts"],
+  "sourcesContent": ["import { LocalStorage, Clipboard, showToast, Toast } from \"@raycast/api\";\nimport { LocalStorageValue } from \"./types\";\n\nexport default async function Command() {\n  const entries = await LocalStorage.allItems<LocalStorageValue>();\n\n  const jsonData = JSON.stringify(entries);\n  await Clipboard.copy(jsonData);\n\n  const text = await Clipboard.readText();\n  if (text == jsonData) {\n    await showToast({ title: \"Copied jump data to clipboard!\" });\n  } else {\n    await showToast({ title: \"Failed to copy jump data to clipboard.\", style: Toast.Style.Failure });\n  }\n}\n"],
+  "mappings": "yaAAA,IAAAA,EAAA,GAAAC,EAAAD,EAAA,aAAAE,IAAA,eAAAC,EAAAH,GAAA,IAAAI,EAA0D,wBAG1D,eAAOF,GAAiC,CACtC,IAAMG,EAAU,MAAM,eAAa,SAA4B,EAEzDC,EAAW,KAAK,UAAUD,CAAO,EACvC,MAAM,YAAU,KAAKC,CAAQ,EAEhB,MAAM,YAAU,SAAS,GAC1BA,EACV,QAAM,aAAU,CAAE,MAAO,gCAAiC,CAAC,EAE3D,QAAM,aAAU,CAAE,MAAO,yCAA0C,MAAO,QAAM,MAAM,OAAQ,CAAC,CAEnG",
+  "names": ["copy_jump_data_exports", "__export", "Command", "__toCommonJS", "import_api", "entries", "jsonData"]
+}

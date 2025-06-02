@@ -1,0 +1,79 @@
+2/7/2021 5:41:20 AM Program.InitCustomize
+2/7/2021 5:41:21 AM InitDataBaseInfo Success
+2/7/2021 5:41:22 AM /Users/.Android
+2/7/2021 5:41:22 AM App Version :10.2.9.310
+2/7/2021 5:41:22 AM <USB DEBUG> start requesting...
+2/7/2021 5:41:22 AM InitApp End
+2/7/2021 5:41:23 AM ConnectionScanTask start
+2/7/2021 5:41:23 AM ConnectionScanTask End
+2/7/2021 5:41:23 AM <USB DEBUG> start parsing json...
+2/7/2021 5:41:23 AM <USB DEBUG> value compare: 1-1
+2/7/2021 5:41:23 AM RegisterUSBDevicesNotify handle:140350862206144
+2/7/2021 5:41:23 AM MacMonitorTask start=============================
+2/7/2021 5:41:23 AM Add device: SDOM:01 CPID:8020 CPRV:11 CPFM:03 SCEP:01 BDID:0C ECID:000E710C3C02003A IBFL:3D SRNM:[F2LYVAP2KXKN]
+2/7/2021 5:41:23 AM ConnectionHub OnDeviceArrival:IOService:/AppleARMPE/arm-io@10F00000/AppleT810xIO/usb-drd1@2280000/AppleT8103USBXHCI@01000000/usb-drd1-port-hs@01100000/Apple Mobile Device (Recovery Mode)@01100000
+2/7/2021 5:41:23 AM AddUSBConnection device: IOService:/AppleARMPE/arm-io@10F00000/AppleT810xIO/usb-drd1@2280000/AppleT8103USBXHCI@01000000/usb-drd1-port-hs@01100000/Apple Mobile Device (Recovery Mode)@01100000
+2/7/2021 5:41:24 AM Read device database error:System.Data.SQLite.SQLiteException (0x80004005): SQLite error
+no such table: t_deviceinfo
+  at System.Data.SQLite.SQLite3.Prepare (System.Data.SQLite.SQLiteConnection cnn, System.String strSql, System.Data.SQLite.SQLiteStatement previous, System.UInt32 timeoutMS, System.String& strRemain) [0x00236] in <11ca4cdea1f442cc9806e1ea6da122b4>:0 
+  at System.Data.SQLite.SQLiteCommand.BuildNextCommand () [0x000eb] in <11ca4cdea1f442cc9806e1ea6da122b4>:0 
+  at System.Data.SQLite.SQLiteCommand.GetStatement (System.Int32 index) [0x0000b] in <11ca4cdea1f442cc9806e1ea6da122b4>:0 
+  at (wrapper remoting-invoke-with-check) System.Data.SQLite.SQLiteCommand.GetStatement(int)
+  at System.Data.SQLite.SQLiteDataReader.NextResult () [0x000db] in <11ca4cdea1f442cc9806e1ea6da122b4>:0 
+  at System.Data.SQLite.SQLiteDataReader..ctor (System.Data.SQLite.SQLiteCommand cmd, System.Data.CommandBehavior behave) [0x00051] in <11ca4cdea1f442cc9806e1ea6da122b4>:0 
+  at (wrapper remoting-invoke-with-check) System.Data.SQLite.SQLiteDataReader..ctor(System.Data.SQLite.SQLiteCommand,System.Data.CommandBehavior)
+  at System.Data.SQLite.SQLiteCommand.ExecuteReader (System.Data.CommandBehavior behavior) [0x00006] in <11ca4cdea1f442cc9806e1ea6da122b4>:0 
+  at System.Data.SQLite.SQLiteCommand.ExecuteDbDataReader (System.Data.CommandBehavior behavior) [0x00000] in <11ca4cdea1f442cc9806e1ea6da122b4>:0 
+  at System.Data.Common.DbCommand.System.Data.IDbCommand.ExecuteReader (System.Data.CommandBehavior behavior) [0x00000] in <d9067a07a82148d1800232c0302a3e4e>:0 
+  at System.Data.Common.DbDataAdapter.FillInternal (System.Data.DataSet dataset, System.Data.DataTable[] datatables, System.Int32 startRecord, System.Int32 maxRecords, System.String srcTable, System.Data.IDbCommand command, System.Data.CommandBehavior behavior) [0x0003f] in <d9067a07a82148d1800232c0302a3e4e>:0 
+  at System.Data.Common.DbDataAdapter.Fill (System.Data.DataTable[] dataTables, System.Int32 startRecord, System.Int32 maxRecords, System.Data.IDbCommand command, System.Data.CommandBehavior behavior) [0x0007c] in <d9067a07a82148d1800232c0302a3e4e>:0 
+  at System.Data.Common.DbDataAdapter.Fill (System.Data.DataTable dataTable) [0x00034] in <d9067a07a82148d1800232c0302a3e4e>:0 
+  at (wrapper remoting-invoke-with-check) System.Data.Common.DbDataAdapter.Fill(System.Data.DataTable)
+  at WMM.Common.Data.SqliteHelper+CommandDataAdapter.FillTable () [0x00019] in <5c9a365379104ddb912189f8e74b6c65>:0 
+  at WMM.Common.Data.SqliteHelper.ExecuteDataTable (System.String cmdText, System.Data.SQLite.SQLiteParameter[] p) [0x00010] in <5c9a365379104ddb912189f8e74b6c65>:0 
+  at WMM.Common.Data.SqliteHelper.ExecuteDataTable (System.String cmdText) [0x00000] in <5c9a365379104ddb912189f8e74b6c65>:0 
+  at WMM.Device.Connection.USBDriverManager.GetDeviceInfo (WMM.Device.DeviceNodeInfo devinfo) [0x00293] in <b85ea4a2c3544db6b7a9011f781b5aac>:0 
+2/7/2021 5:41:24 AM ConnectionHub.AddConnection(IOService:/AppleARMPE/arm-io@10F00000/AppleT810xIO/usb-drd1@2280000/AppleT8103USBXHCI@01000000/usb-drd1-port-hs@01100000/Apple Mobile Device (Recovery Mode)@01100000, iOS, SDOM:01 CPID:8020 CPRV:11 CPFM:03 SCEP:01 BDID:0C ECID:000E710C3C02003A IBFL:3D SRNM:[F2LYVAP2KXKN])
+2/7/2021 5:41:24 AM Connection inserter Start
+2/7/2021 5:41:24 AM Connection inserter create new device
+2/7/2021 5:41:24 AM Connection inserter device is iOS
+2/7/2021 5:41:24 AM Connection inserter AddService
+2/7/2021 5:41:24 AM Device manager add device SerialNumber: SDOM:01 CPID:8020 CPRV:11 CPFM:03 SCEP:01 BDID:0C ECID:000E710C3C02003A IBFL:3D SRNM:[F2LYVAP2KXKN]
+2/7/2021 5:41:25 AM start connectApple  Mobile Device (Recovery Mode)
+2/7/2021 5:41:25 AM Connection begin IOService:/AppleARMPE/arm-io@10F00000/AppleT810xIO/usb-drd1@2280000/AppleT8103USBXHCI@01000000/usb-drd1-port-hs@01100000/Apple Mobile Device (Recovery Mode)@01100000
+2/7/2021 5:41:25 AM [DC_UsbTask] try connect, Times: 1
+2/7/2021 5:41:25 AM [DC_IOSCOT] Initialize ios start.
+2/7/2021 5:41:25 AM [DC_Listener] DoCheckService result: True
+2/7/2021 5:41:25 AM [DC_IOSCOT] Initialize, ios service running
+2/7/2021 5:41:25 AM Connection step Checking
+2/7/2021 5:41:25 AM [DC_UsbTask] start wait system installing.
+2/7/2021 5:41:25 AM ......device_ConnectStepChanged Step: Checking
+2/7/2021 5:41:26 AM [DC_UsbTask] end wait system installing.
+2/7/2021 5:41:26 AM [DC_UsbTask] start wait FindExpectInterface
+2/7/2021 5:41:26 AM [DC_UsbTask] end wait FindExpectInterface.
+2/7/2021 5:41:26 AM [DC_UsbTask] start PrepareCheck.
+2/7/2021 5:41:26 AM [DC_UsbTask] end PrepareCheck.
+2/7/2021 5:41:26 AM [DC_UsbTask] start GetConnectTask
+2/7/2021 5:41:26 AM [DC-BSCOT] BC-DoConnection enter..
+2/7/2021 5:41:26 AM [DC-BSCOT] BC-GetWaitReadyTask skip..
+2/7/2021 5:41:26 AM [DC-BSCOT] BC-GetWaitReadyTask enter..
+2/7/2021 5:41:26 AM [DC-BSCOT] BC-WaitReadyWorker enter..
+2/7/2021 5:41:26 AM Connection step WaitReady
+2/7/2021 5:41:26 AM ......device_ConnectStepChanged Step: WaitReady
+2/7/2021 5:41:26 AM [DC_IOSCOT]DoWaitReady Start
+2/7/2021 5:41:26 AM [DC_IOSCOT] workingmode is not normal, exit.
+2/7/2021 5:41:26 AM [DC_UsbTask] end GetConnectTask : False
+2/7/2021 5:41:26 AM Connection end IOService:/AppleARMPE/arm-io@10F00000/AppleT810xIO/usb-drd1@2280000/AppleT8103USBXHCI@01000000/usb-drd1-port-hs@01100000/Apple Mobile Device (Recovery Mode)@01100000 Recovery
+2/7/2021 5:41:26 AM Recovery
+2/7/2021 5:41:26 AM device statusFalse
+2/7/2021 5:41:26 AM Connection step Completed
+2/7/2021 5:41:26 AM ......device_ConnectStepChanged Step: Completed
+2/7/2021 5:41:28 AM Download Driver DB Ok, Version=4.0.1428646627
+2/7/2021 5:41:28 AM Replace DriverDb Ok
+2/7/2021 5:41:43 AM <MainPage> gotobackupPage...
+2/7/2021 5:41:43 AM <BackupsPage> :param:False_activePage:True
+2/7/2021 5:41:48 AM Remove device: SDOM:01 CPID:8020 CPRV:11 CPFM:03 SCEP:01 BDID:0C ECID:000E710C3C02003A IBFL:3D SRNM:[F2LYVAP2KXKN]
+2/7/2021 5:41:48 AM ConnectionHub OnDeviceArrival:IOService:/AppleARMPE/arm-io@10F00000/AppleT810xIO/usb-drd1@2280000/AppleT8103USBXHCI@01000000/usb-drd1-port-hs@01100000/Apple Mobile Device (Recovery Mode)@01100000
+2/7/2021 5:41:48 AM ConnectionHub.RemoveConnection(IOService:/AppleARMPE/arm-io@10F00000/AppleT810xIO/usb-drd1@2280000/AppleT8103USBXHCI@01000000/usb-drd1-port-hs@01100000/Apple Mobile Device (Recovery Mode)@01100000, SDOM:01 CPID:8020 CPRV:11 CPFM:03 SCEP:01 BDID:0C ECID:000E710C3C02003A IBFL:3D SRNM:[F2LYVAP2KXKN])
+2/7/2021 5:41:48 AM ConnectionHub.OnConnectionLost(IOService:/AppleARMPE/arm-io@10F00000/AppleT810xIO/usb-drd1@2280000/AppleT8103USBXHCI@01000000/usb-drd1-port-hs@01100000/Apple Mobile Device (Recovery Mode)@01100000)
+2/7/2021 5:41:48 AM Device manager remove device SerialNumber: SDOM:01 CPID:8020 CPRV:11 CPFM:03 SCEP:01 BDID:0C ECID:000E710C3C02003A IBFL:3D SRNM:[F2LYVAP2KXKN]

@@ -1,0 +1,89 @@
+{
+  "$schema" : "https:\/\/schema.linearmouse.app\/0.10.0",
+  "schemes" : [
+    {
+      "if" : {
+        "device" : {
+          "serialNumber" : "01A92C46",
+          "productID" : "0xb034",
+          "productName" : "MX Master 3S M",
+          "category" : "mouse",
+          "vendorID" : "0x46d"
+        }
+      },
+      "scrolling" : {
+        "reverse" : {
+          "vertical" : true
+        },
+        "acceleration" : {
+          "vertical" : 1
+        }
+      },
+      "buttons" : {
+        "mappings" : [
+          {
+            "action" : "missionControl",
+            "option" : false,
+            "shift" : false,
+            "button" : 2,
+            "control" : false,
+            "command" : false
+          },
+          {
+            "action" : "missionControl.spaceRight",
+            "option" : false,
+            "shift" : true,
+            "button" : 2,
+            "control" : false,
+            "command" : false
+          }
+        ]
+      }
+    },
+    {
+      "if" : {
+        "device" : {
+          "productName" : "Apple Internal Keyboard \/ Trackpad",
+          "category" : "trackpad",
+          "vendorID" : "0x5ac",
+          "productID" : "0x341"
+        }
+      },
+      "scrolling" : {
+        "acceleration" : {
+          "vertical" : 1
+        }
+      }
+    },
+    {
+      "if" : {
+        "device" : {
+          "vendorID" : "0x413c",
+          "productName" : "Dell Universal Receiver",
+          "category" : "mouse",
+          "productID" : "0x301b"
+        }
+      },
+      "scrolling" : {
+        "reverse" : {
+          "vertical" : true
+        },
+        "acceleration" : {
+          "vertical" : 4
+        }
+      },
+      "buttons" : {
+        "mappings" : [
+          {
+            "action" : "missionControl",
+            "command" : false,
+            "button" : 2,
+            "option" : false,
+            "shift" : false,
+            "control" : false
+          }
+        ]
+      }
+    }
+  ]
+}

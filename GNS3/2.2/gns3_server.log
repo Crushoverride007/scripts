@@ -1,0 +1,126 @@
+2022-12-08 09:37:11 INFO run.py:219 GNS3 server version 2.2.35.1
+2022-12-08 09:37:11 INFO run.py:221 Copyright (c) 2007-2022 GNS3 Technologies Inc.
+2022-12-08 09:37:11 INFO run.py:224 Config file /Users/senkvs/.config/GNS3/2.2/gns3_server.conf loaded
+2022-12-08 09:37:11 WARNING run.py:230 Local mode is enabled. Beware, clients will have full control on your filesystem
+2022-12-08 09:37:11 INFO run.py:237 HTTP authentication is enabled with username 'admin'
+2022-12-08 09:37:11 INFO run.py:243 Running with Python 3.8.5 and has PID 96667
+2022-12-08 09:37:11 WARNING __init__.py:366 Config disk: image 'config.img' missing
+2022-12-08 09:37:11 INFO web_server.py:318 Starting server on localhost:3080
+2022-12-08 09:37:11 INFO __init__.py:63 Load controller configuration file /Users/senkvs/.config/GNS3/2.2/gns3_controller.conf
+2022-12-08 09:37:11 INFO __init__.py:67 Controller is starting
+2022-12-08 09:37:11 INFO compute.py:64 Create compute local
+2022-12-08 09:37:11 INFO compute.py:364 Connecting to compute 'local'
+2022-12-08 09:37:11 INFO web_log.py:206 ::1 [08/Dec/2022:08:37:11 +0000] "GET /v2/compute/capabilities HTTP/1.1" 200 524 "-" "Python/3.8 aiohttp/3.8.3"
+2022-12-08 09:37:11 INFO notification_handler.py:50 New client has connected to compute WebSocket
+2022-12-08 09:37:11 INFO compute.py:431 Connected to compute 'local' WebSocket 'http://localhost:3080/v2/compute/notifications/ws'
+2022-12-08 09:37:11 INFO web_log.py:206 ::1 [08/Dec/2022:08:37:11 +0000] "GET /v2/version HTTP/1.1" 200 231 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:37:11 INFO web_log.py:206 ::1 [08/Dec/2022:08:37:11 +0000] "GET /v2/version HTTP/1.1" 200 231 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:37:11 INFO notification_handler.py:73 New client has connected to controller WebSocket
+2022-12-08 09:37:11 INFO web_log.py:206 ::1 [08/Dec/2022:08:37:11 +0000] "GET /v2/version HTTP/1.1" 200 231 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:37:11 INFO web_log.py:206 ::1 [08/Dec/2022:08:37:11 +0000] "GET /v2/version HTTP/1.1" 200 231 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:37:11 INFO notification_handler.py:73 New client has connected to controller WebSocket
+2022-12-08 09:37:11 INFO web_log.py:206 ::1 [08/Dec/2022:08:37:11 +0000] "GET /v2/templates HTTP/1.1" 200 2503 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:37:11 INFO web_log.py:206 ::1 [08/Dec/2022:08:37:11 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:37:11 INFO web_log.py:206 ::1 [08/Dec/2022:08:37:11 +0000] "GET /v2/projects HTTP/1.1" 200 185 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:37:11 INFO web_log.py:206 ::1 [08/Dec/2022:08:37:11 +0000] "GET /v2/templates HTTP/1.1" 200 2503 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:37:11 INFO web_log.py:206 ::1 [08/Dec/2022:08:37:11 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:37:11 INFO web_log.py:206 ::1 [08/Dec/2022:08:37:11 +0000] "GET /v2/projects HTTP/1.1" 200 185 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:37:11 INFO web_log.py:206 ::1 [08/Dec/2022:08:37:11 +0000] "GET /v2/gns3vm HTTP/1.1" 200 379 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:37:12 INFO web_log.py:206 ::1 [08/Dec/2022:08:37:11 +0000] "GET /v2/symbols/%3A/symbols/frame_relay_switch.svg/raw HTTP/1.1" 200 10029 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:37:12 INFO web_log.py:206 ::1 [08/Dec/2022:08:37:11 +0000] "GET /v2/symbols/%3A/symbols/atm_switch.svg/raw HTTP/1.1" 200 9961 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:37:12 INFO web_log.py:206 ::1 [08/Dec/2022:08:37:11 +0000] "GET /v2/symbols/%3A/symbols/hub.svg/raw HTTP/1.1" 200 7638 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:37:12 INFO web_log.py:206 ::1 [08/Dec/2022:08:37:11 +0000] "GET /v2/symbols/%3A/symbols/ethernet_switch.svg/raw HTTP/1.1" 200 9275 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:37:12 INFO web_log.py:206 ::1 [08/Dec/2022:08:37:11 +0000] "GET /v2/symbols/%3A/symbols/vpcs_guest.svg/raw HTTP/1.1" 200 19497 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:37:12 INFO web_log.py:206 ::1 [08/Dec/2022:08:37:11 +0000] "GET /v2/symbols/%3A/symbols/cloud.svg/raw HTTP/1.1" 200 27984 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:37:12 INFO notification_handler.py:82 Client has disconnected from controller WebSocket
+2022-12-08 09:37:12 INFO web_log.py:206 ::1 [08/Dec/2022:08:37:11 +0000] "GET /v2/notifications/ws HTTP/1.1" 200 0 "-" "-"
+2022-12-08 09:45:23 INFO web_log.py:206 ::1 [08/Dec/2022:08:45:23 +0000] "GET /v2/version HTTP/1.1" 200 231 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:45:23 INFO web_log.py:206 ::1 [08/Dec/2022:08:45:23 +0000] "GET /v2/gns3vm HTTP/1.1" 200 379 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:45:25 INFO web_log.py:206 ::1 [08/Dec/2022:08:45:25 +0000] "GET /v2/version HTTP/1.1" 200 231 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:45:25 INFO web_log.py:206 ::1 [08/Dec/2022:08:45:25 +0000] "GET /v2/templates HTTP/1.1" 200 2503 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:45:25 INFO __init__.py:63 Load controller configuration file /Users/senkvs/.config/GNS3/2.2/gns3_controller.conf
+2022-12-08 09:45:25 INFO web_log.py:206 ::1 [08/Dec/2022:08:45:25 +0000] "PUT /v2/gns3vm HTTP/1.1" 201 384 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:45:25 INFO web_log.py:206 ::1 [08/Dec/2022:08:45:25 +0000] "GET /v2/appliances?symbol_theme=Classic HTTP/1.1" 200 830445 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:45:25 INFO web_log.py:206 ::1 [08/Dec/2022:08:45:25 +0000] "GET /v2/templates HTTP/1.1" 200 2503 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:45:25 INFO web_log.py:206 ::1 [08/Dec/2022:08:45:25 +0000] "GET /v2/appliances?symbol_theme=Classic HTTP/1.1" 200 830445 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:45:36 INFO web_log.py:206 ::1 [08/Dec/2022:08:45:36 +0000] "GET /v2/projects HTTP/1.1" 200 185 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:45:42 INFO web_log.py:206 ::1 [08/Dec/2022:08:45:42 +0000] "POST /v2/projects HTTP/1.1" 201 744 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:45:42 INFO project_handler.py:272 New client has connected to the notification stream for project ID 'defe5ac8-fcf0-40be-b28d-b44c728b5a82' (WebSocket method)
+2022-12-08 09:46:10 INFO web_log.py:206 ::1 [08/Dec/2022:08:46:10 +0000] "GET /v2/gns3vm HTTP/1.1" 200 379 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:46:10 INFO web_log.py:206 ::1 [08/Dec/2022:08:46:10 +0000] "GET /v2/iou_license HTTP/1.1" 200 241 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:46:10 INFO __init__.py:63 Load controller configuration file /Users/senkvs/.config/GNS3/2.2/gns3_controller.conf
+2022-12-08 09:46:10 INFO web_log.py:206 ::1 [08/Dec/2022:08:46:10 +0000] "GET /v2/gns3vm/engines HTTP/1.1" 200 1312 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:46:10 INFO web_log.py:206 ::1 [08/Dec/2022:08:46:10 +0000] "GET /v2/gns3vm/engines/vmware/vms HTTP/1.1" 200 204 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:46:17 INFO web_log.py:206 ::1 [08/Dec/2022:08:46:17 +0000] "GET /v2/compute/dynamips/images HTTP/1.1" 200 200 "-" "Python/3.8 aiohttp/3.8.3"
+2022-12-08 09:46:17 INFO web_log.py:206 ::1 [08/Dec/2022:08:46:17 +0000] "GET /v2/computes/local/dynamips/images HTTP/1.1" 200 216 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 09:48:23 INFO web_log.py:206 ::1 [08/Dec/2022:08:48:23 +0000] "GET /v2/symbols HTTP/1.1" 200 104895 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:39 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:39 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:01:57 INFO project.py:78 Project 458f47ca-b4e1-4476-baf8-3f72ec4142a4 with path '/Users/senkvs/GNS3/projects/458f47ca-b4e1-4476-baf8-3f72ec4142a4' created
+2022-12-08 10:01:57 WARNING project_manager.py:96 Only 6.50% or less of free disk space detected in "/Users/senkvs/GNS3/projects/458f47ca-b4e1-4476-baf8-3f72ec4142a4" on "SBOX.local"
+2022-12-08 10:01:57 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:57 +0000] "POST /v2/compute/projects HTTP/1.1" 201 307 "-" "Python/3.8 aiohttp/3.8.3"
+2022-12-08 10:01:57 INFO __init__.py:303 Creating new hypervisor localhost:54229 with working directory /Users/senkvs/GNS3/projects/458f47ca-b4e1-4476-baf8-3f72ec4142a4/project-files/dynamips
+2022-12-08 10:01:57 INFO hypervisor.py:127 Starting Dynamips: ['/Applications/GNS3.app/Contents/MacOS/dynamips', '-N1', '-l', 'dynamips_i1_log.txt', '-H', 'localhost:54229']
+2022-12-08 10:01:57 INFO hypervisor.py:129 Dynamips process logging to /Users/senkvs/GNS3/projects/458f47ca-b4e1-4476-baf8-3f72ec4142a4/project-files/dynamips/dynamips_i1_stdout.txt
+2022-12-08 10:01:57 INFO hypervisor.py:136 Dynamips process started PID=97479
+2022-12-08 10:01:57 INFO __init__.py:305 Hypervisor localhost:54229 has successfully started
+2022-12-08 10:01:58 INFO dynamips_hypervisor.py:92 Connected to Dynamips hypervisor on localhost:54229 after 1.2376 seconds
+2022-12-08 10:01:58 INFO router.py:222 Router c7200 "AUTOIDLEPC" [ecdfd714-39cd-4893-a298-5fdcafd9c71c] has been created
+2022-12-08 10:01:58 INFO router.py:1102 Router "AUTOIDLEPC" [ecdfd714-39cd-4893-a298-5fdcafd9c71c]: adapter C7200-IO-FE inserted into slot 0
+2022-12-08 10:01:58 INFO router.py:489 Router "AUTOIDLEPC" [ecdfd714-39cd-4893-a298-5fdcafd9c71c]: has a new IOS image set: "/Users/senkvs/GNS3/images/IOS/c7200-adventerprisek9-mz.152-4.M8.image"
+2022-12-08 10:01:58 INFO router.py:516 Router "AUTOIDLEPC" [ecdfd714-39cd-4893-a298-5fdcafd9c71c]: RAM updated from 256MB to 512MB
+2022-12-08 10:01:59 INFO web_log.py:206 127.0.0.1 [08/Dec/2022:09:01:57 +0000] "POST /v2/compute/projects/458f47ca-b4e1-4476-baf8-3f72ec4142a4/dynamips/nodes HTTP/1.1" 201 1407 "-" "Python/3.8 aiohttp/3.8.3"
+2022-12-08 10:01:59 INFO router.py:661 Router "AUTOIDLEPC" [ecdfd714-39cd-4893-a298-5fdcafd9c71c]: idle-PC set to 0x0
+2022-12-08 10:01:59 INFO router.py:298 router "AUTOIDLEPC" [ecdfd714-39cd-4893-a298-5fdcafd9c71c] has been started
+2022-12-08 10:02:19 INFO router.py:703 Router "AUTOIDLEPC" [ecdfd714-39cd-4893-a298-5fdcafd9c71c] has started calculating Idle-PC values
+2022-12-08 10:02:31 INFO router.py:711 Router "AUTOIDLEPC" [ecdfd714-39cd-4893-a298-5fdcafd9c71c] has finished calculating Idle-PC values after 12.1690 seconds
+2022-12-08 10:02:31 INFO router.py:661 Router "AUTOIDLEPC" [ecdfd714-39cd-4893-a298-5fdcafd9c71c]: idle-PC set to 0x6062e598
+2022-12-08 10:02:35 INFO router.py:328 Router "AUTOIDLEPC" [ecdfd714-39cd-4893-a298-5fdcafd9c71c] has been stopped
+2022-12-08 10:02:35 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:59 +0000] "GET /v2/compute/projects/458f47ca-b4e1-4476-baf8-3f72ec4142a4/dynamips/nodes/ecdfd714-39cd-4893-a298-5fdcafd9c71c/auto_idlepc HTTP/1.1" 200 272 "-" "Python/3.8 aiohttp/3.8.3"
+2022-12-08 10:02:35 INFO web_log.py:206 ::1 [08/Dec/2022:09:02:35 +0000] "POST /v2/compute/projects/458f47ca-b4e1-4476-baf8-3f72ec4142a4/dynamips/nodes/ecdfd714-39cd-4893-a298-5fdcafd9c71c/stop HTTP/1.1" 204 191 "-" "Python/3.8 aiohttp/3.8.3"
+2022-12-08 10:02:35 INFO base_node.py:331 Dynamips: 'AUTOIDLEPC' [ecdfd714-39cd-4893-a298-5fdcafd9c71c]: is closing
+2022-12-08 10:02:35 INFO hypervisor.py:148 Stopping Dynamips process PID=97479
+2022-12-08 10:02:35 INFO project.py:361 Project 458f47ca-b4e1-4476-baf8-3f72ec4142a4 with path '/Users/senkvs/GNS3/projects/458f47ca-b4e1-4476-baf8-3f72ec4142a4' closed
+2022-12-08 10:02:35 INFO web_log.py:206 127.0.0.1 [08/Dec/2022:09:02:35 +0000] "POST /v2/compute/projects/458f47ca-b4e1-4476-baf8-3f72ec4142a4/close HTTP/1.1" 204 167 "-" "Python/3.8 aiohttp/3.8.3"
+2022-12-08 10:02:35 INFO web_log.py:206 ::1 [08/Dec/2022:09:01:57 +0000] "POST /v2/computes/local/auto_idlepc HTTP/1.1" 200 239 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:02:36 INFO web_log.py:206 ::1 [08/Dec/2022:09:02:36 +0000] "GET /v2/computes HTTP/1.1" 200 981 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:02:40 INFO web_log.py:206 ::1 [08/Dec/2022:09:02:40 +0000] "GET /v2/symbols/%3A/symbols/router.svg/raw HTTP/1.1" 200 11039 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:02:58 INFO web_log.py:206 ::1 [08/Dec/2022:09:02:58 +0000] "POST /v2/templates HTTP/1.1" 201 1179 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:03:33 INFO web_log.py:206 ::1 [08/Dec/2022:09:03:33 +0000] "POST /v2/projects/defe5ac8-fcf0-40be-b28d-b44c728b5a82/nodes/start HTTP/1.1" 204 165 "-" "GNS3 QT Client v2.2.35.1"
+2022-12-08 10:10:39 INFO notification_handler.py:82 Client has disconnected from controller WebSocket
+2022-12-08 10:10:39 INFO web_log.py:206 ::1 [08/Dec/2022:08:37:11 +0000] "GET /v2/notifications/ws HTTP/1.1" 200 0 "-" "-"
+2022-12-08 10:10:43 INFO project_handler.py:281 Client has disconnected from notification stream for project ID 'defe5ac8-fcf0-40be-b28d-b44c728b5a82' (WebSocket method)
+2022-12-08 10:10:48 INFO project_handler.py:290 Project 'defe5ac8-fcf0-40be-b28d-b44c728b5a82' is automatically closing due to no client listening
+2022-12-08 10:10:48 INFO web_log.py:206 ::1 [08/Dec/2022:08:45:42 +0000] "GET /v2/projects/defe5ac8-fcf0-40be-b28d-b44c728b5a82/notifications/ws HTTP/1.1" 200 0 "-" "-"
+2022-12-09 15:54:57 WARNING web_server.py:170 Server has got signal SIGTERM, exiting...
+2022-12-09 15:54:57 INFO web_server.py:113 Closing 1 websocket connections...
+2022-12-09 15:54:57 INFO notification_handler.py:59 Client has disconnected from compute WebSocket
+2022-12-09 15:54:57 INFO web_log.py:206 127.0.0.1 [08/Dec/2022:18:40:50 +0000] "GET /v2/compute/notifications/ws HTTP/1.1" 200 447 "-" "Python/3.8 aiohttp/3.8.3"
+2022-12-09 15:54:57 INFO compute.py:457 Connection closed to compute 'local' WebSocket 'http://localhost:3080/v2/compute/notifications/ws'
+2022-12-09 15:54:57 INFO __init__.py:138 Controller is stopping
+2022-12-09 15:54:57 INFO run.py:272 Remove PID file /Users/senkvs/.config/GNS3/2.2/gns3_server.pid

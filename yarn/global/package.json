@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@expo/ngrok": "^2.4.3",
+    "create-react-app": "^5.0.1",
+    "create-vite": "^4.1.0",
+    "vercel": "^32.5.0"
+  }
+}

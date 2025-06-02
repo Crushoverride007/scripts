@@ -1,0 +1,13 @@
+contexts:
+- name: kubernetes
+  server: kubernetes
+  user: kubernetes
+current-context: kubernetes
+servers:
+- core: true
+  grpc-web-root-path: ""
+  insecure: true
+  plain-text: true
+  server: kubernetes
+users:
+- name: kubernetes
