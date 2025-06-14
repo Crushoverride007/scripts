@@ -1,0 +1,117 @@
+{
+  "terminal.integrated.env.osx": {
+    "FIG_NEW_SESSION": "1"
+  },
+
+  // Editor
+  "editor.fontSize": 14,
+  "editor.accessibilitySupport": "off",
+  "editor.fontFamily": "Hack Nerd Font",
+  "editor.wordWrap": "on",
+  "editor.minimap.enabled": false,
+  "editor.scrollbar.horizontal": "hidden",
+  "editor.scrollbar.vertical": "hidden",
+  
+
+  "projectManager.git.baseFolders": [
+      "/Users/senkvs/documents/github"
+  ],
+  "powershell.promptToUpdatePowerShell": false,
+
+  // Parallels
+  "parallels-desktop.extension.path": "/Users/senkvs/.parallels-desktop-vscode",
+  "parallels-desktop.git.path": "/usr/bin/git",
+  "parallels-desktop.prlctl.path": "/usr/local/bin/prlctl",
+  "parallels-desktop.brew.path": "/opt/homebrew/bin/brew",
+  
+  // Github Copilot
+  "github.copilot.editor.enableAutoCompletions": true,
+
+  // Terminal
+  "terminal.integrated.fontWeight": "normal",
+  "terminal.integrated.defaultProfile.osx": "zsh",
+  "terminal.integrated.fontFamily": "Hack Nerd Font",
+  "terminal.integrated.fontSize": 14,  // Adjust as needed
+  "terminal.integrated.lineHeight": 1.2,  // Adjust as needed
+  "terminal.integrated.letterSpacing": 0,
+  
+  
+  // Workbench
+  "workbench.sideBar.location": "right",
+  "workbench.statusBar.visible": false,
+  "workbench.editor.showTabs": "single",
+  "workbench.activityBar.location": "hidden",
+  "workbench.editor.enablePreview": false,
+  "workbench.iconTheme": "material-icon-theme",
+  "workbench.startupEditor": "none",
+  "workbench.layoutControl.enabled": false,
+  
+  
+  // Window
+  "window.zoomLevel": 1,
+  "window.titleSeparator": " ~ ",
+  "window.dialogStyle": "custom",
+  "window.titleBarStyle": "native",
+  "window.menuBarVisibility": "toggle",
+  "window.customTitleBarVisibility": "never",
+  "window.commandCenter": false,
+  
+  
+  // Custom UI
+  "custom-ui-style.electron": {
+    "titleBarStyle": "hiddenInset",
+    "trafficLightPosition": {
+      "x": 20,
+      "y": 15
+    }
+  },
+"custom-ui-style.stylesheet": {
+  ".monaco-workbench .part.editor > .content .editor-group-container > .title .tabs-container > .tab .tab-label, .monaco-workbench .part.editor > .content .editor-group-container > .title .title-label": "font-size: 12px !important; padding-left: 80px !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; line-height: 35px !important;"
+},
+
+
+  // Miscellaneous
+  "explorer.compactFolders": false,
+  "explorer.confirmDelete": false,
+  "breadcrumbs.enabled": false,
+  "outline.collapseItems": "alwaysCollapse",
+  "zenMode.showTabs": "single",
+  
+  
+  
+  // APCs
+  "apc.header": {
+    "height": 35
+  },
+  "apc.sidebar.titlebar": {
+    "height": 35
+  },
+  "apc.activityBar": {
+    "size": 77,
+    "itemSize": 48,
+    "itemMargin": 0
+  },
+  "apc.stylesheet": {
+    // Don't indent the sidebar title.
+    //".custom-sidebar-titlebar .sidebar .composite.title": "padding-left: 0;",
+    // Don't indent the statusbar items.
+    //".monaco-workbench .part.statusbar>.items-container>.statusbar-item.left.first-visible-item": "padding-left: 0;",
+    // Show the host button, and make it as wide as the .activitybar.
+    ".statusbar #status\\.host": "display: block !important; width: calc(var(--activity-bar-action-size) - 1px); background: [#555](https://github.com/lehni/vscode-titlebar-less-macos/issues/555) !important;",
+    ".statusbar #status\\.host .codicon": "margin: 0 auto;",
+  },
+  "application.shellEnvironmentResolutionTimeout": 100,
+  "telemetry.telemetryLevel": "off",
+  "workbench.colorTheme": "Tomorrow Night Blue",
+  "workbench.colorCustomizations": {
+    "terminal.background": "#00000000"
+  },
+  "workbench.settings.applyToAllProfiles": [],
+  "security.workspace.trust.untrustedFiles": "open",
+  "git.enableSmartCommit": true,
+  "git.confirmSync": false,
+  "terminal.integrated.gpuAcceleration": "off",
+  "vsicons.dontShowNewVersionMessage": true,
+  "parallels-desktop.devops-service.path": "/Users/senkvs/.parallels-desktop-vscode/tools/prldevops"
+}
+
