@@ -29,6 +29,41 @@ print_header() {
     echo -e "${CYAN}$1${NC}"
 }
 
+# Function to read password with asterisks (improved version)
+read_password() {
+    local prompt="$1"
+    local password=""
+    echo -n "$prompt"
+    
+    # Turn off echo and enable raw mode
+    stty -echo
+    
+    while true; do
+        # Read one character
+        char=$(dd bs=1 count=1 2>/dev/null)
+        
+        # Check for Enter key (newline)
+        if [[ $char == $'\n' ]] || [[ $char == $'\r' ]]; then
+            break
+        # Check for Backspace
+        elif [[ $char == $'\177' ]] || [[ $char == $'\b' ]]; then
+            if [ ${#password} -gt 0 ]; then
+                password="${password%?}"
+                echo -ne '\b \b'
+            fi
+        # Regular character
+        else
+            password+="$char"
+            echo -n '*'
+        fi
+    done
+    
+    # Restore echo
+    stty echo
+    echo
+    echo "$password"
+}
+
 # Variables to track what was done
 SCRIPT_START_TIME=$(date)
 USER_CREATED=false
@@ -127,7 +162,7 @@ fi
 
 # Password handling
 if [ -t 0 ]; then
-    # Interactive mode - prompt for password with visible input
+    # Interactive mode - prompt for password with asterisks
     echo
     print_status "Setting up password for user: $NEW_USER"
     print_warning "Password requirements:"
@@ -136,16 +171,14 @@ if [ -t 0 ]; then
     echo
     
     while true; do
-        echo -n "Enter password: "
-        read USER_PASSWORD
+        USER_PASSWORD=$(read_password "Enter password: ")
         
         if [ ${#USER_PASSWORD} -lt 8 ]; then
             print_error "Password must be at least 8 characters long."
             continue
         fi
         
-        echo -n "Confirm password: "
-        read PASSWORD_CONFIRM
+        PASSWORD_CONFIRM=$(read_password "Confirm password: ")
         
         if [ "$USER_PASSWORD" = "$PASSWORD_CONFIRM" ]; then
             print_success "Password confirmed!"
