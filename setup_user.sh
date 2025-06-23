@@ -29,29 +29,6 @@ print_header() {
     echo -e "${CYAN}$1${NC}"
 }
 
-# Function to read password securely
-read_password() {
-    local prompt="$1"
-    local password=""
-    echo -n "$prompt"
-    
-    while IFS= read -r -s -n1 char; do
-        if [[ $char == $'\0' ]]; then
-            break
-        elif [[ $char == $'\177' ]]; then  # Backspace
-            if [ ${#password} -gt 0 ]; then
-                password="${password%?}"
-                echo -ne '\b \b'
-            fi
-        else
-            password+="$char"
-            echo -n '*'
-        fi
-    done
-    echo
-    echo "$password"
-}
-
 # Variables to track what was done
 SCRIPT_START_TIME=$(date)
 USER_CREATED=false
@@ -150,7 +127,7 @@ fi
 
 # Password handling
 if [ -t 0 ]; then
-    # Interactive mode - prompt for password
+    # Interactive mode - prompt for password with visible input
     echo
     print_status "Setting up password for user: $NEW_USER"
     print_warning "Password requirements:"
@@ -159,14 +136,16 @@ if [ -t 0 ]; then
     echo
     
     while true; do
-        USER_PASSWORD=$(read_password "Enter password: ")
+        echo -n "Enter password: "
+        read USER_PASSWORD
         
         if [ ${#USER_PASSWORD} -lt 8 ]; then
             print_error "Password must be at least 8 characters long."
             continue
         fi
         
-        PASSWORD_CONFIRM=$(read_password "Confirm password: ")
+        echo -n "Confirm password: "
+        read PASSWORD_CONFIRM
         
         if [ "$USER_PASSWORD" = "$PASSWORD_CONFIRM" ]; then
             print_success "Password confirmed!"
