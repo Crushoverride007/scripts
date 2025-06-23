@@ -45,66 +45,84 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Get the current user (the one who ran sudo)
-REAL_USER=${SUDO_USER:-$USER}
-
 print_header "=== Secure User Setup Script ==="
 echo
 
-# Fix input handling for piped execution
-exec < /dev/tty
-
-# Prompt for username with better validation
-while true; do
-    echo -n "Enter the username for the new user: "
-    read NEW_USER
-    
-    # Check if empty
-    if [ -z "$NEW_USER" ]; then
-        print_error "Username cannot be empty."
-        continue
-    fi
-    
-    # Check username format
-    if [[ "$NEW_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] && [ ${#NEW_USER} -le 32 ]; then
-        break
+# Simple approach: Use command line argument or prompt
+if [ -n "$1" ]; then
+    NEW_USER="$1"
+    print_status "Using provided username: $NEW_USER"
+else
+    # For interactive use, prompt for username
+    if [ -t 0 ]; then
+        while true; do
+            echo -n "Enter the username for the new user: "
+            read NEW_USER
+            
+            # Check if empty
+            if [ -z "$NEW_USER" ]; then
+                print_error "Username cannot be empty."
+                continue
+            fi
+            
+            # Check username format
+            if [[ "$NEW_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] && [ ${#NEW_USER} -le 32 ]; then
+                break
+            else
+                print_error "Invalid username. Requirements:"
+                echo "  - Start with lowercase letter or underscore"
+                echo "  - Use only lowercase letters, numbers, underscore, and hyphen"
+                echo "  - Maximum 32 characters"
+                echo "  - Examples: john, user_1, test-user"
+            fi
+        done
     else
-        print_error "Invalid username. Requirements:"
-        echo "  - Start with lowercase letter or underscore"
-        echo "  - Use only lowercase letters, numbers, underscore, and hyphen"
-        echo "  - Maximum 32 characters"
-        echo "  - Examples: john, user_1, test-user"
+        # For non-interactive (piped) use, use default or exit
+        print_error "No username provided. Usage:"
+        echo "Interactive: curl ... | sudo bash"
+        echo "Non-interactive: curl ... | sudo bash -s username"
+        echo "Example: curl ... | sudo bash -s ljonhjarta"
+        exit 1
     fi
-done
+fi
+
+# Validate username format
+if ! [[ "$NEW_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] || [ ${#NEW_USER} -gt 32 ]; then
+    print_error "Invalid username format: $NEW_USER"
+    print_error "Requirements:"
+    echo "  - Start with lowercase letter or underscore"
+    echo "  - Use only lowercase letters, numbers, underscore, and hyphen"
+    echo "  - Maximum 32 characters"
+    exit 1
+fi
 
 # Check if user already exists
 if id "$NEW_USER" &>/dev/null; then
-    print_error "User '$NEW_USER' already exists!"
-    print_status "Would you like to:"
-    echo "1. Remove existing user and recreate"
-    echo "2. Exit and choose different username"
-    echo -n "Choose option (1/2): "
-    read CHOICE
+    print_warning "User '$NEW_USER' already exists!"
     
-    case $CHOICE in
-        1)
-            print_warning "Removing existing user '$NEW_USER'..."
-            userdel -r "$NEW_USER" 2>/dev/null
-            if [ $? -eq 0 ]; then
-                print_success "User '$NEW_USER' removed successfully"
-            else
-                print_warning "User removal had some issues, continuing anyway..."
-            fi
-            ;;
-        2)
-            print_status "Exiting. Please run the script again with a different username."
-            exit 0
-            ;;
-        *)
-            print_error "Invalid choice. Exiting."
-            exit 1
-            ;;
-    esac
+    if [ -t 0 ]; then
+        # Interactive mode
+        echo "Would you like to:"
+        echo "1. Remove existing user and recreate"
+        echo "2. Exit and choose different username"
+        echo -n "Choose option (1/2): "
+        read CHOICE
+        
+        case $CHOICE in
+            1)
+                print_warning "Removing existing user '$NEW_USER'..."
+                userdel -r "$NEW_USER" 2>/dev/null
+                ;;
+            *)
+                print_status "Exiting."
+                exit 0
+                ;;
+        esac
+    else
+        # Non-interactive mode - auto remove and recreate
+        print_warning "Removing existing user '$NEW_USER' and recreating..."
+        userdel -r "$NEW_USER" 2>/dev/null
+    fi
 fi
 
 # Generate a random password
@@ -173,45 +191,43 @@ else
     SSH_KEYS_MANUAL=true
 fi
 
-# Test sudo access
-print_status "Testing sudo access for $NEW_USER..."
-if sudo -u "$NEW_USER" sudo -n true 2>/dev/null; then
-    print_success "Sudo access configured correctly"
+# SSH Hardening - Auto-apply for non-interactive, prompt for interactive
+if [ -t 0 ]; then
+    # Interactive mode
+    echo
+    print_status "SSH Security Hardening"
+    echo "This will:"
+    echo "  • Disable root SSH login"
+    echo "  • Disable password authentication"
+    echo "  • Enable public key authentication only"
+    echo "  • Restrict SSH access to $NEW_USER only"
+    echo
+    print_warning "IMPORTANT: Make sure SSH key authentication works before proceeding!"
+    print_warning "Test in another terminal: ssh $NEW_USER@$SERVER_IP"
+    echo
+    
+    while true; do
+        echo -n "Do you want to apply SSH hardening now? (y/n): "
+        read HARDEN_SSH
+        case $HARDEN_SSH in
+            [Yy]* ) 
+                break
+                ;;
+            [Nn]* ) 
+                SKIP_HARDENING=true
+                break
+                ;;
+            * ) 
+                echo "Please answer yes (y) or no (n)."
+                ;;
+        esac
+    done
 else
-    print_status "Sudo access will require password (this is normal)"
+    # Non-interactive mode - skip hardening by default for safety
+    print_warning "Non-interactive mode: Skipping SSH hardening for safety"
+    print_warning "Apply SSH hardening manually after testing SSH key authentication"
+    SKIP_HARDENING=true
 fi
-
-# SSH Hardening Option
-echo
-print_status "SSH Security Hardening"
-echo "This will:"
-echo "  • Disable root SSH login"
-echo "  • Disable password authentication"
-echo "  • Enable public key authentication only"
-echo "  • Restrict SSH access to $NEW_USER only"
-echo
-print_warning "IMPORTANT: Make sure SSH key authentication works before proceeding!"
-print_warning "Test in another terminal: ssh $NEW_USER@$SERVER_IP"
-echo
-
-while true; do
-    echo -n "Do you want to apply SSH hardening now? (y/n): "
-    read HARDEN_SSH
-    case $HARDEN_SSH in
-        [Yy]* ) 
-            print_status "Applying SSH hardening..."
-            break
-            ;;
-        [Nn]* ) 
-            print_warning "Skipping SSH hardening. You can apply it manually later."
-            SKIP_HARDENING=true
-            break
-            ;;
-        * ) 
-            echo "Please answer yes (y) or no (n)."
-            ;;
-    esac
-done
 
 if [ "$SKIP_HARDENING" != true ]; then
     # Configure SSH security
@@ -293,17 +309,6 @@ if [ "$SSH_HARDENED" = true ]; then
 fi
 echo
 
-if [ "$SSH_KEYS_MANUAL" = true ] || [ "$SKIP_HARDENING" = true ]; then
-    print_header "⚠️  PENDING ACTIONS"
-    if [ "$SSH_KEYS_MANUAL" = true ]; then
-        echo "  ! Add your SSH public key to: $USER_AUTH_KEYS"
-    fi
-    if [ "$SKIP_HARDENING" = true ]; then
-        echo "  ! SSH hardening not applied (server still accepts passwords)"
-    fi
-    echo
-fi
-
 print_header "🔧 CONNECTION DETAILS"
 echo "SSH Command:    ssh $NEW_USER@$SERVER_IP"
 echo "User Home:      $USER_HOME"
@@ -331,7 +336,7 @@ if [ "$SSH_KEYS_MANUAL" = true ]; then
     echo
 fi
 
-echo "3. Change the temporary password:"
+echo "3. Test SSH connection and change password:"
 echo "   ssh $NEW_USER@$SERVER_IP"
 echo "   passwd"
 echo
@@ -344,10 +349,6 @@ if [ "$SKIP_HARDENING" = true ]; then
     echo "   sudo systemctl restart sshd"
     echo
 fi
-
-echo "5. Test the connection:"
-echo "   ssh $NEW_USER@$SERVER_IP"
-echo
 
 print_header "🛡️  SECURITY STATUS"
 if [ "$SSH_HARDENED" = true ]; then
@@ -362,12 +363,6 @@ print_warning "Temporary password: $TEMP_PASSWORD"
 print_warning "Change this password immediately after first login!"
 echo
 
-print_header "📞 SUPPORT"
-echo "If you encounter issues:"
-echo "• Check SSH key permissions: ls -la ~/.ssh/"
-echo "• Verify server connectivity: ping $SERVER_IP"
-echo "• Check SSH logs: sudo tail -f /var/log/auth.log"
-echo
 echo "========================================================================"
 print_success "Setup completed successfully! Server is ready for use."
 echo "========================================================================"
