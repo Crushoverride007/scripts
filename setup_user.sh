@@ -51,6 +51,9 @@ REAL_USER=${SUDO_USER:-$USER}
 print_header "=== Secure User Setup Script ==="
 echo
 
+# Fix input handling for piped execution
+exec < /dev/tty
+
 # Prompt for username with better validation
 while true; do
     echo -n "Enter the username for the new user: "
@@ -77,7 +80,31 @@ done
 # Check if user already exists
 if id "$NEW_USER" &>/dev/null; then
     print_error "User '$NEW_USER' already exists!"
-    exit 1
+    print_status "Would you like to:"
+    echo "1. Remove existing user and recreate"
+    echo "2. Exit and choose different username"
+    echo -n "Choose option (1/2): "
+    read CHOICE
+    
+    case $CHOICE in
+        1)
+            print_warning "Removing existing user '$NEW_USER'..."
+            userdel -r "$NEW_USER" 2>/dev/null
+            if [ $? -eq 0 ]; then
+                print_success "User '$NEW_USER' removed successfully"
+            else
+                print_warning "User removal had some issues, continuing anyway..."
+            fi
+            ;;
+        2)
+            print_status "Exiting. Please run the script again with a different username."
+            exit 0
+            ;;
+        *)
+            print_error "Invalid choice. Exiting."
+            exit 1
+            ;;
+    esac
 fi
 
 # Generate a random password
