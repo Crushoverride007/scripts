@@ -29,6 +29,29 @@ print_header() {
     echo -e "${CYAN}$1${NC}"
 }
 
+# Function to read password securely
+read_password() {
+    local prompt="$1"
+    local password=""
+    echo -n "$prompt"
+    
+    while IFS= read -r -s -n1 char; do
+        if [[ $char == $'\0' ]]; then
+            break
+        elif [[ $char == $'\177' ]]; then  # Backspace
+            if [ ${#password} -gt 0 ]; then
+                password="${password%?}"
+                echo -ne '\b \b'
+            fi
+        else
+            password+="$char"
+            echo -n '*'
+        fi
+    done
+    echo
+    echo "$password"
+}
+
 # Variables to track what was done
 SCRIPT_START_TIME=$(date)
 USER_CREATED=false
@@ -125,8 +148,39 @@ if id "$NEW_USER" &>/dev/null; then
     fi
 fi
 
-# Generate a random password
-TEMP_PASSWORD=$(openssl rand -base64 12)
+# Password handling
+if [ -t 0 ]; then
+    # Interactive mode - prompt for password
+    echo
+    print_status "Setting up password for user: $NEW_USER"
+    print_warning "Password requirements:"
+    echo "  - Minimum 8 characters"
+    echo "  - Mix of letters, numbers, and symbols recommended"
+    echo
+    
+    while true; do
+        USER_PASSWORD=$(read_password "Enter password: ")
+        
+        if [ ${#USER_PASSWORD} -lt 8 ]; then
+            print_error "Password must be at least 8 characters long."
+            continue
+        fi
+        
+        PASSWORD_CONFIRM=$(read_password "Confirm password: ")
+        
+        if [ "$USER_PASSWORD" = "$PASSWORD_CONFIRM" ]; then
+            print_success "Password confirmed!"
+            break
+        else
+            print_error "Passwords do not match. Please try again."
+            echo
+        fi
+    done
+else
+    # Non-interactive mode - generate random password
+    USER_PASSWORD=$(openssl rand -base64 12)
+    print_status "Generated random password for non-interactive mode"
+fi
 
 print_status "Creating user: $NEW_USER"
 
@@ -138,8 +192,8 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Set the temporary password
-echo "$NEW_USER:$TEMP_PASSWORD" | chpasswd
+# Set the password
+echo "$NEW_USER:$USER_PASSWORD" | chpasswd
 
 if [ $? -ne 0 ]; then
     print_error "Failed to set password"
@@ -282,13 +336,19 @@ echo "Started:  $SCRIPT_START_TIME"
 echo "Finished: $SCRIPT_END_TIME"
 echo "Server:   $SERVER_IP"
 echo "User:     $NEW_USER"
-echo "Password: $TEMP_PASSWORD"
+if [ ! -t 0 ]; then
+    echo "Password: $USER_PASSWORD"
+fi
 echo
 
 print_header "✅ COMPLETED TASKS"
 if [ "$USER_CREATED" = true ]; then
     echo "  ✓ User '$NEW_USER' created with home directory"
-    echo "  ✓ Temporary password set: $TEMP_PASSWORD"
+    if [ -t 0 ]; then
+        echo "  ✓ Custom password set"
+    else
+        echo "  ✓ Random password generated: $USER_PASSWORD"
+    fi
 fi
 if [ "$SUDO_ADDED" = true ]; then
     echo "  ✓ User added to sudo group (admin privileges)"
@@ -313,7 +373,9 @@ print_header "🔧 CONNECTION DETAILS"
 echo "SSH Command:    ssh $NEW_USER@$SERVER_IP"
 echo "User Home:      $USER_HOME"
 echo "SSH Keys:       $USER_AUTH_KEYS"
-echo "Temp Password:  $TEMP_PASSWORD"
+if [ ! -t 0 ]; then
+    echo "Password:       $USER_PASSWORD"
+fi
 if [ "$SSH_HARDENED" = true ]; then
     echo "Auth Method:    SSH Key Only"
 else
@@ -336,9 +398,8 @@ if [ "$SSH_KEYS_MANUAL" = true ]; then
     echo
 fi
 
-echo "3. Test SSH connection and change password:"
+echo "3. Test SSH connection:"
 echo "   ssh $NEW_USER@$SERVER_IP"
-echo "   passwd"
 echo
 
 if [ "$SKIP_HARDENING" = true ]; then
@@ -358,10 +419,12 @@ else
 fi
 echo
 
-print_header "🔑 IMPORTANT SECURITY NOTE"
-print_warning "Temporary password: $TEMP_PASSWORD"
-print_warning "Change this password immediately after first login!"
-echo
+if [ ! -t 0 ]; then
+    print_header "🔑 IMPORTANT SECURITY NOTE"
+    print_warning "Generated password: $USER_PASSWORD"
+    print_warning "Change this password after first login!"
+    echo
+fi
 
 echo "========================================================================"
 print_success "Setup completed successfully! Server is ready for use."
