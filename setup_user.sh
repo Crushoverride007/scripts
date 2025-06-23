@@ -51,13 +51,26 @@ REAL_USER=${SUDO_USER:-$USER}
 print_header "=== Secure User Setup Script ==="
 echo
 
-# Prompt for username
+# Prompt for username with better validation
 while true; do
-    read -p "Enter the username for the new user: " NEW_USER
+    echo -n "Enter the username for the new user: "
+    read NEW_USER
+    
+    # Check if empty
+    if [ -z "$NEW_USER" ]; then
+        print_error "Username cannot be empty."
+        continue
+    fi
+    
+    # Check username format
     if [[ "$NEW_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] && [ ${#NEW_USER} -le 32 ]; then
         break
     else
-        print_error "Invalid username. Use only lowercase letters, numbers, underscore, and hyphen. Max 32 characters."
+        print_error "Invalid username. Requirements:"
+        echo "  - Start with lowercase letter or underscore"
+        echo "  - Use only lowercase letters, numbers, underscore, and hyphen"
+        echo "  - Maximum 32 characters"
+        echo "  - Examples: john, user_1, test-user"
     fi
 done
 
@@ -67,13 +80,24 @@ if id "$NEW_USER" &>/dev/null; then
     exit 1
 fi
 
+# Generate a random password
+TEMP_PASSWORD=$(openssl rand -base64 12)
+
 print_status "Creating user: $NEW_USER"
 
-# Create the user
-adduser --gecos "" "$NEW_USER"
+# Create the user with non-interactive method
+useradd -m -s /bin/bash "$NEW_USER"
 
 if [ $? -ne 0 ]; then
     print_error "Failed to create user"
+    exit 1
+fi
+
+# Set the temporary password
+echo "$NEW_USER:$TEMP_PASSWORD" | chpasswd
+
+if [ $? -ne 0 ]; then
+    print_error "Failed to set password"
     exit 1
 fi
 
@@ -144,7 +168,8 @@ print_warning "Test in another terminal: ssh $NEW_USER@$SERVER_IP"
 echo
 
 while true; do
-    read -p "Do you want to apply SSH hardening now? (y/n): " HARDEN_SSH
+    echo -n "Do you want to apply SSH hardening now? (y/n): "
+    read HARDEN_SSH
     case $HARDEN_SSH in
         [Yy]* ) 
             print_status "Applying SSH hardening..."
@@ -214,11 +239,13 @@ echo "Started:  $SCRIPT_START_TIME"
 echo "Finished: $SCRIPT_END_TIME"
 echo "Server:   $SERVER_IP"
 echo "User:     $NEW_USER"
+echo "Password: $TEMP_PASSWORD"
 echo
 
 print_header "✅ COMPLETED TASKS"
 if [ "$USER_CREATED" = true ]; then
     echo "  ✓ User '$NEW_USER' created with home directory"
+    echo "  ✓ Temporary password set: $TEMP_PASSWORD"
 fi
 if [ "$SUDO_ADDED" = true ]; then
     echo "  ✓ User added to sudo group (admin privileges)"
@@ -254,6 +281,7 @@ print_header "🔧 CONNECTION DETAILS"
 echo "SSH Command:    ssh $NEW_USER@$SERVER_IP"
 echo "User Home:      $USER_HOME"
 echo "SSH Keys:       $USER_AUTH_KEYS"
+echo "Temp Password:  $TEMP_PASSWORD"
 if [ "$SSH_HARDENED" = true ]; then
     echo "Auth Method:    SSH Key Only"
 else
@@ -276,8 +304,13 @@ if [ "$SSH_KEYS_MANUAL" = true ]; then
     echo
 fi
 
+echo "3. Change the temporary password:"
+echo "   ssh $NEW_USER@$SERVER_IP"
+echo "   passwd"
+echo
+
 if [ "$SKIP_HARDENING" = true ]; then
-    echo "3. Apply SSH hardening when ready:"
+    echo "4. Apply SSH hardening when ready:"
     echo "   sudo nano /etc/ssh/sshd_config"
     echo "   # Set: PermitRootLogin no"
     echo "   # Set: PasswordAuthentication no"
@@ -285,7 +318,7 @@ if [ "$SKIP_HARDENING" = true ]; then
     echo
 fi
 
-echo "4. Test the connection:"
+echo "5. Test the connection:"
 echo "   ssh $NEW_USER@$SERVER_IP"
 echo
 
@@ -295,6 +328,11 @@ if [ "$SSH_HARDENED" = true ]; then
 else
     print_warning "MEDIUM - SSH hardening pending, password auth still enabled"
 fi
+echo
+
+print_header "🔑 IMPORTANT SECURITY NOTE"
+print_warning "Temporary password: $TEMP_PASSWORD"
+print_warning "Change this password immediately after first login!"
 echo
 
 print_header "📞 SUPPORT"
