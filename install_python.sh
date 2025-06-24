@@ -1,5 +1,24 @@
 #!/bin/bash
 #
+# ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+# ┃                                                                              ┃
+# ┃   ██████╗ ██╗   ██╗████████╗██╗  ██╗ ██████╗ ███╗   ██╗                     ┃
+# ┃   ██╔══██╗╚██╗ ██╔╝╚══██╔══╝██║  ██║██╔═══██╗████╗  ██║                     ┃
+# ┃   ██████╔╝ ╚████╔╝    ██║   ███████║██║   ██║██╔██╗ ██║                     ┃
+# ┃   ██╔═══╝   ╚██╔╝     ██║   ██╔══██║██║   ██║██║╚██╗██║                     ┃
+# ┃   ██║        ██║      ██║   ██║  ██║╚██████╔╝██║ ╚████║                     ┃
+# ┃   ╚═╝        ╚═╝      ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝                     ┃
+# ┃                                                                              ┃
+# ┃   Cross-Platform Python Installation Script                                  ┃
+# ┃   Version: 1.0.0                                                             ┃
+# ┃   Author: crushoverride007                                                   ┃
+# ┃   Repository: https://github.com/Crushoverride007/scripts                    ┃
+# ┃                                                                              ┃
+# ┃   This script automatically installs Python with pip on Linux, macOS,        ┃
+# ┃   and Windows systems, and configures the environment variables.             ┃
+# ┃                                                                              ┃
+# ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+#
 # Cross-platform Python installation script
 # Installs Python with pip and sets up environment variables
 # Works on Linux, macOS, and Windows (via Git Bash or WSL)
@@ -10,6 +29,8 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
 NC='\033[0m' # No Color
 
 # Function to print colored messages
@@ -17,6 +38,20 @@ print_message() {
     local color=$1
     local message=$2
     echo -e "${color}${message}${NC}"
+}
+
+# Print the welcome banner
+print_welcome_banner() {
+    echo ""
+    print_message $CYAN "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓"
+    print_message $CYAN "┃                                                                              ┃"
+    print_message $CYAN "┃   Cross-Platform Python Installation Script                                  ┃"
+    print_message $CYAN "┃   Version: 1.0.0                                                             ┃"
+    print_message $CYAN "┃   Author: crushoverride007                                                   ┃"
+    print_message $CYAN "┃   Repository: https://github.com/Crushoverride007/scripts                    ┃"
+    print_message $CYAN "┃                                                                              ┃"
+    print_message $CYAN "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛"
+    echo ""
 }
 
 # Detect OS
@@ -41,8 +76,10 @@ if [[ "$OS" == *"MINGW"* ]] || [[ "$OS" == *"MSYS"* ]] || [[ "$OS" == *"CYGWIN"*
     fi
 fi
 
-print_message $BLUE "=== Cross-Platform Python Installation Script ==="
-print_message $BLUE "=== This will install Python 3 with pip and set up environment variables ==="
+# Display welcome banner
+print_welcome_banner
+
+print_message $BLUE "=== This script will install Python 3 with pip and set up environment variables ==="
 print_message $YELLOW "Detected system: $OS on $ARCH architecture"
 
 # Function for Linux installation
@@ -236,6 +273,7 @@ install_on_windows() {
     
     cat > "$PS_SCRIPT" << 'EOF'
 # PowerShell script to install Python on Windows
+# Created by crushoverride007
 
 Write-Host "Starting Python installation on Windows..." -ForegroundColor Yellow
 
@@ -357,4 +395,10 @@ if [ "$OS" != "Windows" ]; then
     fi
 fi
 
-print_message $GREEN "All done! Python is ready to use on your $OS $ARCH system."
+print_message $CYAN "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓"
+print_message $CYAN "┃                                                                              ┃"
+print_message $CYAN "┃   All done! Python is ready to use on your $OS $ARCH system.                 "
+print_message $CYAN "┃   Script created by crushoverride007                                         ┃"
+print_message $CYAN "┃   https://github.com/Crushoverride007/scripts                                ┃"
+print_message $CYAN "┃                                                                              ┃"
+print_message $CYAN "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛"
