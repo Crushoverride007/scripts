@@ -113,6 +113,41 @@ if [[ "$OS" != *"Ubuntu"* ]] && [[ "$OS" != *"Debian"* ]]; then
     fi
 fi
 
+# Check if Docker is already installed
+if command -v docker &> /dev/null; then
+    EXISTING_DOCKER_VERSION=$(docker --version 2>/dev/null | cut -d ' ' -f3 | tr -d ',')
+    print_message $YELLOW "Docker is already installed (version $EXISTING_DOCKER_VERSION)."
+    print_message $YELLOW "Would you like to reinstall/update Docker? (y/n)"
+    read -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        print_message $GREEN "Skipping Docker installation."
+        
+        # Still capture version information for the summary
+        DOCKER_VERSION=$EXISTING_DOCKER_VERSION
+        DOCKER_COMPOSE_VERSION=$(docker compose version 2>/dev/null | cut -d ' ' -f4 | tr -d ',' || echo "Not installed")
+        CONTAINERD_VERSION=$(containerd --version 2>/dev/null | cut -d ' ' -f3 || echo "Not installed")
+        
+        # Check if user is in docker group
+        if [ "$SUDO_USER" ]; then
+            if groups $SUDO_USER | grep -q '\bdocker\b'; then
+                print_message $GREEN "User $SUDO_USER is already in the docker group."
+            else
+                print_message $YELLOW "User $SUDO_USER is not in the docker group. Adding now..."
+                usermod -aG docker $SUDO_USER
+                print_message $GREEN "User $SUDO_USER added to the docker group. You may need to log out and back in for this to take effect."
+            fi
+        fi
+        
+        # Skip to completion banner
+        print_completion_banner
+        print_message $YELLOW "Note: If you want to use Docker as a non-root user, log out and log back in for the group membership to take effect."
+        exit 0
+    else
+        print_message $YELLOW "Proceeding with Docker reinstallation/update..."
+    fi
+fi
+
 # Update package index
 print_message $YELLOW "Updating package index..."
 apt-get update
