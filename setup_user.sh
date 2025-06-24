@@ -1,12 +1,49 @@
 #!/bin/bash
-
+#
+# ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+# ┃                                                                              ┃
+# ┃   ███████╗███████╗ ██████╗██╗   ██╗██████╗ ███████╗                         ┃
+# ┃   ██╔════╝██╔════╝██╔════╝██║   ██║██╔══██╗██╔════╝                         ┃
+# ┃   ███████╗█████╗  ██║     ██║   ██║██████╔╝█████╗                           ┃
+# ┃   ╚════██║██╔══╝  ██║     ██║   ██║██╔══██╗██╔══╝                           ┃
+# ┃   ███████║███████╗╚██████╗╚██████╔╝██║  ██║███████╗                         ┃
+# ┃   ╚══════╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝                         ┃
+# ┃                                                                              ┃
+# ┃   ██╗   ██╗███████╗███████╗██████╗                                          ┃
+# ┃   ██║   ██║██╔════╝██╔════╝██╔══██╗                                         ┃
+# ┃   ██║   ██║███████╗█████╗  ██████╔╝                                         ┃
+# ┃   ██║   ██║╚════██║██╔══╝  ██╔══██╗                                         ┃
+# ┃   ╚██████╔╝███████║███████╗██║  ██║                                         ┃
+# ┃    ╚═════╝ ╚══════╝╚══════╝╚═╝  ╚═╝                                         ┃
+# ┃                                                                              ┃
+# ┃   Secure User Setup Script                                                   ┃
+# ┃   Version: 1.0.0                                                             ┃
+# ┃   Author: crushoverride007                                                   ┃
+# ┃   Repository: https://github.com/Crushoverride007/scripts                    ┃
+# ┃                                                                              ┃
+# ┃   This script creates a new user with sudo privileges and configures         ┃
+# ┃   SSH for secure remote access.                                              ┃
+# ┃                                                                              ┃
+# ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+#
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
+BOLD='\033[1m'
 NC='\033[0m' # No Color
+
+# Variables to track what was done
+SCRIPT_START_TIME=$(date)
+USER_CREATED=false
+SUDO_ADDED=false
+SSH_DIR_CREATED=false
+SSH_KEYS_COPIED=false
+SSH_KEYS_MANUAL=false
+SSH_HARDENED=false
+SERVER_IP=$(hostname -I | awk '{print $1}')
 
 # Function to print colored output
 print_status() {
@@ -29,24 +66,63 @@ print_header() {
     echo -e "${CYAN}$1${NC}"
 }
 
-# Variables to track what was done
-SCRIPT_START_TIME=$(date)
-USER_CREATED=false
-SUDO_ADDED=false
-SSH_DIR_CREATED=false
-SSH_KEYS_COPIED=false
-SSH_KEYS_MANUAL=false
-SSH_HARDENED=false
-SERVER_IP=$(hostname -I | awk '{print $1}')
+# Print welcome banner
+print_welcome_banner() {
+    echo ""
+    echo -e "${CYAN}+---------------------------------------------------------------+"
+    echo -e "${CYAN}|                                                               |"
+    echo -e "${CYAN}|   SECURE USER SETUP SCRIPT                                    |"
+    echo -e "${CYAN}|                                                               |"
+    echo -e "${CYAN}|   ////////  ////////  ////////  //    //  ////////  ////////  |"
+    echo -e "${CYAN}|   //        //        //        //    //  //    //  //        |"
+    echo -e "${CYAN}|   ////////  ////////  //        //    //  ////////  ////////  |"
+    echo -e "${CYAN}|         //        //  //        //    //  //  //          //  |"
+    echo -e "${CYAN}|   ////////  ////////  ////////  ////////  //    //  ////////  |"
+    echo -e "${CYAN}|                                                               |"
+    echo -e "${CYAN}|   Version: 1.0.0                                              |"
+    echo -e "${CYAN}|   Author: crushoverride007                                    |"
+    echo -e "${CYAN}|   Repository: github.com/Crushoverride007/scripts             |"
+    echo -e "${CYAN}|                                                               |"
+    echo -e "${CYAN}+---------------------------------------------------------------+"
+    echo ""
+}
+
+# Print completion banner
+print_completion_banner() {
+    local USER=$1
+    local SERVER=$2
+    
+    echo ""
+    echo -e "${CYAN}+---------------------------------------------------------------+"
+    echo -e "${CYAN}|                                                               |"
+    echo -e "${CYAN}|   SETUP COMPLETE SUMMARY                                      |"
+    echo -e "${CYAN}|   --------------------                                        |"
+    echo -e "${CYAN}|   Server: $SERVER"
+    echo -e "${CYAN}|   User: $USER"
+    echo -e "${CYAN}|   Started: $SCRIPT_START_TIME"
+    echo -e "${CYAN}|   Finished: $(date)"
+    echo -e "${CYAN}|                                                               |"
+    if [ "$SSH_HARDENED" = true ]; then
+        echo -e "${CYAN}|   Security Status: ${GREEN}HIGH${CYAN} - SSH hardening applied          |"
+    else
+        echo -e "${CYAN}|   Security Status: ${YELLOW}MEDIUM${CYAN} - SSH hardening pending       |"
+    fi
+    echo -e "${CYAN}|                                                               |"
+    echo -e "${CYAN}|   Script created by crushoverride007                          |"
+    echo -e "${CYAN}|   github.com/Crushoverride007/scripts                         |"
+    echo -e "${CYAN}|                                                               |"
+    echo -e "${CYAN}+---------------------------------------------------------------+"
+    echo ""
+}
+
+# Display welcome banner
+print_welcome_banner
 
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then
     print_error "This script must be run as root"
     exit 1
 fi
-
-print_header "=== Secure User Setup Script ==="
-echo
 
 # Simple approach: Use command line argument or prompt
 if [ -n "$1" ]; then
@@ -406,6 +482,9 @@ if [ ! -t 0 ]; then
     print_warning "Change this password after first login!"
     echo
 fi
+
+# Display completion banner
+print_completion_banner "$NEW_USER" "$SERVER_IP"
 
 echo "========================================================================"
 print_success "Setup completed successfully! Server is ready for use."
