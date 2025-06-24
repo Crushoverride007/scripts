@@ -33,6 +33,10 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
+# Initialize variables to store versions
+PYTHON_VERSION="Unknown"
+PIP_VERSION="Unknown"
+
 # Function to print colored messages
 print_message() {
     local color=$1
@@ -52,6 +56,52 @@ print_welcome_banner() {
     print_message $CYAN "┃                                                                              ┃"
     print_message $CYAN "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛"
     echo ""
+}
+
+# Print the completion banner with version information
+print_completion_banner() {
+    # Get the latest Python and pip versions
+    if [ "$OS" = "Windows" ]; then
+        # For Windows, try to get versions via PowerShell
+        if command -v powershell.exe &> /dev/null; then
+            PYTHON_VERSION=$(powershell.exe -Command "python --version" 2>/dev/null || echo "Unknown")
+            PIP_VERSION=$(powershell.exe -Command "pip --version" 2>/dev/null || echo "Unknown")
+            # Clean up the output
+            PYTHON_VERSION=$(echo "$PYTHON_VERSION" | tr -d '\r')
+            PIP_VERSION=$(echo "$PIP_VERSION" | tr -d '\r')
+        fi
+    else
+        # For Linux/macOS
+        if command -v python3 &> /dev/null; then
+            PYTHON_VERSION=$(python3 --version 2>&1)
+        elif command -v python &> /dev/null; then
+            PYTHON_VERSION=$(python --version 2>&1)
+        fi
+        
+        if command -v pip3 &> /dev/null; then
+            PIP_VERSION=$(pip3 --version 2>&1 | awk '{print $1 " " $2}')
+        elif command -v pip &> /dev/null; then
+            PIP_VERSION=$(pip --version 2>&1 | awk '{print $1 " " $2}')
+        fi
+    fi
+    
+    # Format versions for display
+    PYTHON_VERSION=$(echo "$PYTHON_VERSION" | sed 's/Python //')
+    
+    echo ""
+    print_message $CYAN "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓"
+    print_message $CYAN "┃                                                                              ┃"
+    print_message $CYAN "┃   Installation Summary                                                       ┃"
+    print_message $CYAN "┃   -------------------                                                        ┃"
+    print_message $CYAN "┃   System: $OS on $ARCH architecture                                          "
+    print_message $CYAN "┃   Python Version: $PYTHON_VERSION                                            "
+    print_message $CYAN "┃   Pip Version: $PIP_VERSION                                                  "
+    print_message $CYAN "┃                                                                              ┃"
+    print_message $CYAN "┃   All done! Python is ready to use on your system.                           ┃"
+    print_message $CYAN "┃   Script created by crushoverride007                                         ┃"
+    print_message $CYAN "┃   https://github.com/Crushoverride007/scripts                                ┃"
+    print_message $CYAN "┃                                                                              ┃"
+    print_message $CYAN "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛"
 }
 
 # Detect OS
@@ -174,6 +224,10 @@ EOF
         fi
     fi
 
+    # Get installed versions
+    PYTHON_VERSION=$(python3 --version 2>&1)
+    PIP_VERSION=$(pip3 --version 2>&1 | awk '{print $1 " " $2}')
+
     print_message $GREEN "=== Python installation complete on Linux! ==="
     print_message $GREEN "=== You may need to log out and back in or run 'source /etc/profile.d/python_path.sh' to apply PATH changes ==="
 }
@@ -209,8 +263,8 @@ install_on_macos() {
     fi
 
     # Verify Python and pip are installed
-    PYTHON_VERSION=$(python3 --version)
-    PIP_VERSION=$(pip3 --version)
+    PYTHON_VERSION=$(python3 --version 2>&1)
+    PIP_VERSION=$(pip3 --version 2>&1 | awk '{print $1 " " $2}')
     print_message $GREEN "Python installed: $PYTHON_VERSION"
     print_message $GREEN "Pip installed: $PIP_VERSION"
 
@@ -342,12 +396,35 @@ try {
 # Refresh environment variables
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
+# Output installed versions to a temp file for the bash script to read
+$pythonVersion = (python --version 2>&1)
+$pipVersion = (pip --version 2>&1)
+$tempFile = Join-Path $env:TEMP "python_versions.txt"
+"Python: $pythonVersion" | Out-File -FilePath $tempFile
+"Pip: $pipVersion" | Out-File -FilePath $tempFile -Append
+
 Write-Host "Python environment is ready to use!" -ForegroundColor Green
 EOF
     
     # Run the PowerShell script with elevated privileges
     print_message $YELLOW "Running PowerShell installation script with admin privileges..."
     powershell.exe -ExecutionPolicy Bypass -Command "Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -File \"$PS_SCRIPT\"' -Verb RunAs -Wait"
+    
+    # Try to get the installed versions from PowerShell
+    TEMP_FILE=$(powershell.exe -Command "[System.IO.Path]::GetTempPath() + 'python_versions.txt'" | tr -d '\r')
+    if [ -f "$TEMP_FILE" ]; then
+        # Read versions from the temp file
+        PYTHON_LINE=$(grep "Python:" "$TEMP_FILE" | head -1)
+        PIP_LINE=$(grep "Pip:" "$TEMP_FILE" | head -1)
+        
+        # Extract versions
+        PYTHON_VERSION=$(echo "$PYTHON_LINE" | sed 's/Python: Python //')
+        PIP_VERSION=$(echo "$PIP_LINE" | sed 's/Pip: pip //' | awk '{print $1}')
+    else
+        # Fallback to direct PowerShell commands
+        PYTHON_VERSION=$(powershell.exe -Command "python --version" 2>/dev/null | sed 's/Python //' | tr -d '\r' || echo "Unknown")
+        PIP_VERSION=$(powershell.exe -Command "pip --version" 2>/dev/null | awk '{print $1 " " $2}' | tr -d '\r' || echo "Unknown")
+    fi
     
     # Clean up
     rm "$PS_SCRIPT"
@@ -376,8 +453,8 @@ fi
 if [ "$OS" != "Windows" ]; then
     print_message $YELLOW "Verifying Python installation..."
     if command -v python3 &> /dev/null; then
-        PYTHON_VERSION=$(python3 --version)
-        PIP_VERSION=$(pip3 --version 2>/dev/null || echo "Pip not found")
+        PYTHON_VERSION=$(python3 --version 2>&1)
+        PIP_VERSION=$(pip3 --version 2>&1 | awk '{print $1 " " $2}')
         print_message $GREEN "Python installed: $PYTHON_VERSION"
         print_message $GREEN "Pip: $PIP_VERSION"
     else
@@ -395,10 +472,5 @@ if [ "$OS" != "Windows" ]; then
     fi
 fi
 
-print_message $CYAN "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓"
-print_message $CYAN "┃                                                                              ┃"
-print_message $CYAN "┃   All done! Python is ready to use on your $OS $ARCH system.                 "
-print_message $CYAN "┃   Script created by crushoverride007                                         ┃"
-print_message $CYAN "┃   https://github.com/Crushoverride007/scripts                                ┃"
-print_message $CYAN "┃                                                                              ┃"
-print_message $CYAN "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛"
+# Display completion banner with version information
+print_completion_banner
