@@ -3,21 +3,24 @@
 My one-command installers and dotfiles.
 
 ```
-install/     system installers   (docker, python, terraform, user setup)
-vagrant/     Vagrant VMs         (setup, multi-VM lab, single VM)
+docker/      install_docker.sh
+python/      install_python.sh
+terraform/   install_terraform.sh
+user/        setup_user.sh
+vagrant/     setup_vagrant, install_lab, install_vm (+ lab/ Vagrantfile)
 alacritty/ coc/ fish/ git/ karabiner/ neofetch/ nvim/ zed/
 visual_studio_code-settings/ shallow-backup.conf    dotfiles
 ```
 
-## install/
+## docker, terraform, python, user
 
 These install system packages, so they run as root:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/install/install_docker.sh | sudo bash
-curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/install/install_terraform.sh | sudo bash
-curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/install/install_python.sh | sudo bash
-curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/install/setup_user.sh | sudo bash -s <username>
+curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/docker/install_docker.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/terraform/install_terraform.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/python/install_python.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/user/setup_user.sh | sudo bash -s <username>
 ```
 
 On macOS, run `install_python.sh` without `sudo`, because Homebrew refuses to run as root.
