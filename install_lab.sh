@@ -8,7 +8,7 @@
 #    bash install_lab.sh
 #
 #  Windows PowerShell:
-#    irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_lab.ps1 | iex
+#    powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_lab.ps1 | iex"
 #
 #  It checks your platform and prerequisites, downloads the Vagrant project,
 #  asks about each VM in turn, warns if the total will not fit on this PC,
@@ -102,7 +102,7 @@ USAGE (as your normal user - not with sudo)
   bash install_lab.sh
 
   Windows PowerShell:
-  irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_lab.ps1 | iex
+  powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_lab.ps1 | iex"
 
 It checks your platform and prerequisites, downloads the Vagrant project, asks
 about each VM in turn, warns if the total will not fit on this PC, writes

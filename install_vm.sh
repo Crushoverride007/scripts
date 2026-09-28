@@ -8,7 +8,7 @@
 #    bash install_vm.sh --server
 #
 #  Windows PowerShell:
-#    & ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_vm.ps1))) --server
+#    powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_vm.ps1))) --server"
 #
 #  It writes a small Vagrantfile into ./NAME and boots it. --server is a stock
 #  box with nothing added. --desktop adds the Ubuntu desktop packages and

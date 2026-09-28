@@ -1,10 +1,13 @@
 # =============================================================================
 #  install_lab.ps1 - Windows one-liner launcher for install_lab.sh
 #
-#    irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_lab.ps1 | iex
+#  From ANY Windows shell (cmd, PowerShell 5 or 7, Windows Terminal):
+#    powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_lab.ps1 | iex"
 #
-#  With flags (irm | iex cannot pass any):
-#    & ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_lab.ps1))) -y --count 3 --up
+#  With flags (the same line works in cmd and PowerShell):
+#    powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_lab.ps1))) -y --up"
+#
+#  If Git for Windows is missing it offers to install it with winget.
 #
 #  From a clone:   .\install_lab.ps1 --count 3
 #
@@ -35,6 +38,16 @@ function Invoke-LabScript {
     $candidates += Join-Path (Split-Path (Split-Path $git.Source)) 'bin\bash.exe'
   }
   $bash = $candidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+  if (-not $bash -and (Get-Command winget.exe -ErrorAction SilentlyContinue) -and [Environment]::UserInteractive) {
+    # No Git Bash yet: offer to install it rather than just failing.
+    Write-Host ''
+    Write-Host '  Git for Windows is needed (it provides the bash these scripts run in).'
+    $answer = Read-Host '  Install it now with winget? [Y/n]'
+    if ($answer -eq '' -or $answer -match '^(y|yes)$') {
+      winget install --id Git.Git -e --source winget --accept-package-agreements --accept-source-agreements
+      $bash = $candidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+    }
+  }
   if (-not $bash) {
     Write-Host ''
     Write-Host '  x No Git Bash found. Install Git for Windows, then run this again:' -ForegroundColor Red
@@ -76,4 +89,10 @@ function Invoke-LabScript {
   # No "exit" here: under "irm | iex" it would close the user's PowerShell.
 }
 
-Invoke-LabScript -Name 'install_lab.sh' -Arguments $args
+# "irm | iex" cannot pass arguments, so LAB_ARGS can carry them instead:
+#   $env:LAB_ARGS='-y --up'; irm .../install_lab.ps1 | iex
+$labArgs = @($args)
+if ($labArgs.Count -eq 0 -and $env:LAB_ARGS) {
+  $labArgs = @($env:LAB_ARGS -split '\s+' | Where-Object { $_ })
+}
+Invoke-LabScript -Name 'install_lab.sh' -Arguments $labArgs

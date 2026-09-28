@@ -128,6 +128,28 @@ GUI    = LAB["gui"]
 # customisation - setting v.vmx["scsi0:0.filename"] here is too late.
 DISK_BUSES = ["nvme", "scsi", "sata", "ide"].freeze
 
+# ---- boot disk: the data disk must not steal the boot ------------------------
+# The data disk is attached on a SCSI controller (scsi0:1), and VMware's BIOS
+# tries SCSI disks before SATA ones. The box's system disk lives on sata0:0, so
+# without an explicit order the VM boots the empty data disk, prints
+# "Operating System not found", and vagrant hangs on "Waiting for the VM to
+# receive an address". bios.hddOrder pins the boot disk to the box's own slot,
+# read from the box's VMX rather than assumed, so other boxes work too.
+def box_boot_slot(box)
+  home = ENV["VAGRANT_HOME"] || File.join(Dir.home, ".vagrant.d")
+  root = File.join(home, "boxes", box.gsub("/", "-VAGRANTSLASH-"))
+  vmx  = Dir.glob(File.join(root, "**", "*.vmx")).max_by { |p| File.mtime(p) }
+  return nil unless vmx
+  File.readlines(vmx).each do |line|
+    if (m = line.match(/\A\s*((?:#{DISK_BUSES.join("|")})\d+:\d+)\.filename\s*=\s*"[^"]+\.vmdk"/i))
+      return m[1].downcase
+    end
+  end
+  nil
+rescue StandardError
+  nil
+end
+
 def patch_box_vmx(box)
   home  = ENV["VAGRANT_HOME"] || File.join(Dir.home, ".vagrant.d")
   # Vagrant mangles "/" to "VAGRANTSLASH-" in the on-disk box directory name.
@@ -942,6 +964,12 @@ Vagrant.configure("2") do |config|
           # already "FALSE". Guarded on the box name so a custom box whose disk
           # really does live on scsi0:0 is not clobbered.
           v.vmx["scsi0:0.filename"] = "" if BOX.start_with?("bento/ubuntu-24.04")
+
+          # Boot the system disk, not the (empty, SCSI) data disk - see
+          # box_boot_slot. The box is not downloaded until the first "up", so
+          # fall back to bento's known slot rather than leaving it unset.
+          boot_slot = box_boot_slot(BOX) || (BOX.start_with?("bento/") ? "sata0:0" : nil)
+          v.vmx["bios.hddOrder"] = boot_slot if boot_slot
         when "virtualbox"
           v.name = cfg[:label]
           v.customize ["modifyvm", :id,
@@ -1251,7 +1279,7 @@ EOF
 
         # Step 8: Launch Graphical Environment
         echo "=================================================================="
-        echo " STEP 8/${TOTAL_STEPS}: Starting Graphical Desktop"
+        echo " STEP 8/${TOTAL_STEPS}: $([ "$DESKTOP" = "1" ] && echo "Starting Graphical Desktop" || echo "Boot target (headless)")"
         echo "=================================================================="
         [ -n "$GUEST_TOOLS" ] && systemctl enable open-vm-tools > /dev/null 2>&1
         if [ "$DESKTOP" = "1" ]; then

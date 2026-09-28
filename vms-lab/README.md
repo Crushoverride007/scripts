@@ -28,17 +28,19 @@ Unattended, with 3 headless servers:
 curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_lab.sh | bash -s -- -y --count 3 --flavour server --up
 ```
 
-**Windows PowerShell**
+**Windows** (works in cmd, PowerShell 5 or 7, and Windows Terminal)
 
 ```powershell
-irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_lab.ps1 | iex
+powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_lab.ps1 | iex"
 ```
 
-Adding flags (`irm | iex` can't pass any):
+With flags, add them at the end, inside the quotes:
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_lab.ps1))) -y --count 3 --up
+powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_lab.ps1))) -y --count 3 --flavour server --up"
 ```
+
+If Git for Windows is missing, the script offers to install it with winget.
 
 The script asks about each VM, warns if the total won't fit on your PC, writes `lab.yml`, validates it and builds. With `-y` or no terminal it asks nothing and only **prepares** the lab. Add `--up` to build as well. Run with `--help` to see every flag.
 
@@ -52,7 +54,7 @@ curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/insta
 ```
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_vm.ps1))) --server --name web1
+powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_vm.ps1))) --server --name web1"
 ```
 
 `--server` is the stock box with nothing added. `--desktop` adds the Ubuntu desktop packages and nothing else. You log in as `vagrant` / `vagrant`.
