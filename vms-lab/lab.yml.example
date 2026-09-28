@@ -1,0 +1,66 @@
+# =============================================================================
+#  lab.yml  --  the only file you normally edit
+#
+#  Anything here overrides the built-in defaults in the Vagrantfile, which are
+#  only used when this file is absent. Delete it and you fall back to those.
+# =============================================================================
+
+box: bento/ubuntu-24.04          # "bento/ubuntu-24.04" | "bento/ubuntu-22.04" | ...
+provider: vmware_desktop        # "vmware_desktop" (tested) | "virtualbox" | "hyperv"
+                                 #   never auto-detected - see the Vagrantfile
+subnet: "192.168.56"            # host-only segment, never routed to the internet
+
+desktop: true                   # true = Ubuntu desktop + auto-login
+                                 #   false = headless server, no GUI packages
+
+gui: true                       # show each VM's window
+no_sleep: true                  # never blank, lock, suspend or hibernate
+check_host_power: true          # warn if the Windows host itself is set to sleep
+
+new_user: Mouhcine              # created on every VM, auto-logged into the desktop
+new_pass: change-me              # CHANGE THIS - it is a sudo account. install_lab.sh
+                                 #   generates a random one for you
+
+demo: true                      # probe web app + auto-opened browsers.
+                                 #   false = just the tunnel, no web demo
+web_port: 8080                  # demo service on the primary
+tunnel_port: 18080              # first peer's local forward; each next peer +1
+tunnel_target_port: null        # what peers forward to; null = same as web_port
+
+# -----------------------------------------------------------------------------
+#  One entry per VM. Only "name" is required - everything else has a default:
+#    role      :primary (one only, exports NFS + runs sshd + the demo service)
+#              :peer    (mounts the share, tunnels to the primary)
+#              omitted  -> :peer, except the first entry which becomes :primary
+#    ip        defaults to subnet.11, .12, .13, ... in list order
+#    ram       MB of RAM        cpus   vCPU count
+#    disk      primary disk size
+#    gui / no_sleep / label    override the global values above
+# -----------------------------------------------------------------------------
+nodes:
+  - name: ubuntu-node-1
+    role: primary
+    ip: "192.168.56.11"
+    ram: 8192
+    cpus: 4
+    disk: 20GB
+    gui: true
+    no_sleep: true
+
+  - name: ubuntu-node-2
+    role: peer
+    ip: "192.168.56.12"
+    ram: 8192
+    cpus: 4
+    disk: 20GB
+    gui: true
+    no_sleep: true
+
+  - name: ubuntu-node-3
+    role: peer
+    ip: "192.168.56.13"
+    ram: 4096
+    cpus: 2
+    disk: 20GB
+    gui: true
+    no_sleep: true

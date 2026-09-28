@@ -1,0 +1,1566 @@
+# =============================================================================
+#  VMs-Labs :: N-node Ubuntu lab on VMware Desktop
+#
+#  USAGE
+#    1. Edit the CONFIG block below (names, RAM, CPUs, disk, IPs, roles).
+#    2. vagrant up
+#
+#  Each node gets: a host-only IP, a desktop GUI, auto-login as NEW_USER,
+#  NFS file sharing from the primary, and a self-healing SSH tunnel to the
+#  primary. Nothing is published to the internet: no port forwards, and the
+#  probe service binds to the host-only interface only.
+# =============================================================================
+require "fileutils"
+require "shellwords"
+require "yaml"
+
+project_dir = File.dirname(File.expand_path(__FILE__))
+
+# ---- sanity check: CRLF would silently break every heredoc below -----------
+# The guest payloads are bash scripts embedded in Ruby heredocs, and bash only
+# recognises a heredoc terminator at column 0. A Windows editor that saves this
+# file as CRLF adds a \r to that terminator, the heredocs stop closing, and the
+# build dies with a baffling "unexpected EOF" from deep inside a guest script.
+if File.binread(__FILE__).include?("\r")
+  raise <<~MSG
+    This Vagrantfile has CRLF line endings, which breaks the embedded guest
+    scripts. Re-save it as LF (Unix) and run vagrant up again.
+    In VS Code: click "CRLF" in the status bar -> "Save with Encoding" -> LF.
+  MSG
+end
+
+# #############################################################################
+# #  CONFIG -- normally in lab.yml, next to this file                          #
+# #                                                                            #
+# #  lab.yml overrides anything below. The values here are only the DEFAULTS     #
+# #  used when there is no lab.yml, so a fresh clone with no config still works.#
+# #  This file is ~1200 lines of machinery; you should never need to edit it.   #
+# #                                                                            #
+# #    box             the Vagrant box to build                                #
+# #    provider        "vmware_desktop" | "virtualbox" | "hyperv"               #
+# #                     chosen explicitly, never auto-detected: the RAM/CPU     #
+# #                     and disk calls are per-provider, so a silent fallback   #
+# #                     would discard your settings without any error.         #
+# #                     vmware_desktop is the only tested one.                 #
+# #    subnet          host-only segment, never routed to the internet         #
+# #    desktop         true = full Ubuntu desktop + auto-login                  #
+# #                     false = headless server (no GUI packages at all)        #
+# #    gui             default: show each VM's window?                          #
+# #    no_sleep        default: never blank, lock, suspend or hibernate         #
+# #    check_host_power  warn if the Windows host itself is set to sleep        #
+# #    new_user        created on every VM, auto-logged into the desktop        #
+# #    demo            the probe web app + auto-opened browsers (visual proof)  #
+# #    web_port        where the demo service listens, on the primary           #
+# #    tunnel_port     first peer's local forward; each next peer gets +1       #
+# #    tunnel_target_port  what peers forward to; null = same as web_port       #
+# #    nodes           one VM per entry. Only :name is required.                #
+# #        :role      :primary = NFS export + sshd target + demo service        #
+# #                  :peer    = NFS client + SSH tunnel client                 #
+# #                  exactly one :primary; the first entry becomes one if      #
+# #                  omitted                                                       #
+# #        :ip        defaults to subnet.11, .12, .13, ... in list order        #
+# #        :ram       MB of RAM        :cpus   vCPU count                       #
+# #        :disk      primary disk size                                        #
+# #        :gui       show the VM window        (default: gui)                   #
+# #        :no_sleep  never blank/lock/suspend  (default: no_sleep)             #
+# #        :label     window title              (default: name)                 #
+# #############################################################################
+
+DEFAULTS = {
+  "box"               => "bento/ubuntu-24.04",
+  "provider"          => "vmware_desktop",
+  "subnet"            => "192.168.56",
+  "desktop"           => true,
+  "gui"               => true,
+  "no_sleep"          => true,
+  "check_host_power"  => true,
+  "new_user"          => "Mouhcine",
+  "new_pass"          => nil,   # nil = random, kept in .vagrant/lab_password
+  "demo"              => true,
+  "web_port"          => 8080,
+  "tunnel_port"       => 18080,
+  "tunnel_target_port" => nil,   # nil means "same as web_port"
+  "nodes"             => [
+    { "name" => "ubuntu-node-1", "role" => :primary, "ip" => "192.168.56.11",
+      "ram" => 8192, "cpus" => 4, "disk" => "20GB", "gui" => true },
+    { "name" => "ubuntu-node-2", "role" => :peer, "ip" => "192.168.56.12",
+      "ram" => 8192, "cpus" => 4, "disk" => "20GB", "gui" => true },
+  ],
+}
+
+lab_path = File.join(project_dir, "lab.yml")
+LAB =
+  if File.exist?(lab_path)
+    parsed = begin
+      YAML.safe_load(File.read(lab_path), aliases: true) || {}
+    rescue StandardError => e
+      raise "#{lab_path} is not valid YAML: #{e.message}"
+    end
+    unless parsed.is_a?(Hash)
+      raise "#{lab_path} must be a YAML mapping of key: value pairs"
+    end
+    DEFAULTS.merge(parsed)
+  else
+    DEFAULTS
+  end
+
+BOX    = LAB["box"]
+GUI    = LAB["gui"]
+
+# ---- workaround: a vagrant-vmware-desktop bug that blocks any 2nd disk -------
+# vagrant-vmware-desktop 3.0.5 (the latest release) cannot attach a
+# NON-primary disk to this box. It dies with:
+#   cap/disk.rb:129  File.extname(v["filename"])
+#   TypeError: no implicit conversion of nil into String
+# Reason: driver/base.rb#get_disks() groups every "<bus>N:M.<attr>" key in the
+# box's VMX into one hash per slot, and cap/disk.rb#get_disk() then runs
+# File.extname on v["filename"] for every slot with no nil guard. The bento box
+# ships a stray
+#     scsi0:0.redo = ""
+# with no matching scsi0:0.filename, so that slot hashes to {"redo" => ""} and
+# v["filename"] is nil. A primary disk never reaches that line - it is looked up
+# through PRIMARY_DISK_SLOTS instead - which is why a single-disk lab was fine.
+#
+# The fix is to give the unused slot an empty filename, which removes the nil
+# without touching a real disk (the box's disk is sata0:0 and scsi0.present is
+# already "FALSE"). It has to be applied to the BOX, not the Vagrantfile, because
+# the Disk action reads the cloned VMX before Vagrant writes any provider
+# customisation - setting v.vmx["scsi0:0.filename"] here is too late.
+DISK_BUSES = ["nvme", "scsi", "sata", "ide"].freeze
+
+def patch_box_vmx(box)
+  home  = ENV["VAGRANT_HOME"] || File.join(Dir.home, ".vagrant.d")
+  # Vagrant mangles "/" to "VAGRANTSLASH-" in the on-disk box directory name.
+  mangled = box.gsub("/", "-VAGRANTSLASH-")
+  root = File.join(home, "boxes", mangled)
+  return nil unless Dir.exist?(root)
+  fixed = []
+  Dir.glob(File.join(root, "**", "*.vmx")).each do |vmx_path|
+    lines = File.readlines(vmx_path)
+    # Group every bus slot by name, then note which have no filename at all.
+    slots = Hash.new { |h, k| h[k] = [] }
+    lines.each do |line|
+      # NB the (?: ) - with a plain ( ) the \d+:\d+ ends up inside the last
+      # alternative, so the pattern only ever matches a literal "ide0:0".
+      if line =~ /^\s*((?:#{DISK_BUSES.join("|")})\d+:\d+)\.(\S+)\s*=/i
+        slots[Regexp.last_match(1)] << Regexp.last_match(2).downcase
+      end
+    end
+    orphans = slots.reject { |_, attrs| attrs.include?("filename") }.keys.sort
+    next if orphans.empty?
+    backup = "#{vmx_path}.pre-lab-disk-fix"
+    FileUtils.cp(vmx_path, backup) unless File.exist?(backup)
+    body = lines.join
+    orphans.each do |slot|
+      body << "\n#{slot}.filename = \"\"\n"
+    end
+    File.write(vmx_path, body)
+    fixed << [File.basename(vmx_path), orphans]
+  end
+  fixed
+rescue => e
+  puts "==> [lab] NOTE: could not check the box's disk config (#{e.class})."
+  nil
+end
+
+SUBNET = LAB["subnet"]
+NO_SLEEP = LAB["no_sleep"]
+CHECK_HOST_POWER = LAB["check_host_power"]
+PROVIDER = LAB["provider"]
+NEW_USER = LAB["new_user"].to_s
+new_pass = LAB["new_pass"].to_s
+# Both end up in guest shell scripts and in useradd, so refuse anything that is
+# not a plain login name, and shell-quote the password wherever it is used.
+unless NEW_USER.match?(/\A[A-Za-z_][A-Za-z0-9_-]{0,31}\z/)
+  raise "new_user #{NEW_USER.inspect} is not a valid login name (letters, digits, - and _)"
+end
+# No password in lab.yml (or the example's placeholder): never fall back to a
+# fixed one - this file is public, so that would be a known sudo password on
+# every VM. Generate one per project instead, keep it in .vagrant/ (git-ignored)
+# so every run and every node agrees, and say where it is.
+if new_pass.empty? || new_pass == "change-me"
+  pass_file = File.join(project_dir, ".vagrant", "lab_password")
+  unless File.exist?(pass_file)
+    require "securerandom"
+    FileUtils.mkdir_p(File.dirname(pass_file))
+    File.write(pass_file, SecureRandom.alphanumeric(16))
+  end
+  new_pass = File.read(pass_file).strip
+  puts "==> [lab] login   : #{NEW_USER} / #{new_pass}   (generated, in .vagrant/lab_password)"
+end
+NEW_PASS = new_pass
+# Anything but an explicit false means desktop, so an old lab.yml without the
+# key keeps building exactly what it always did.
+DESKTOP = LAB["desktop"] != false
+DEMO = LAB["demo"]
+WEB_PORT = LAB["web_port"].to_i
+TUNNEL_PORT = LAB["tunnel_port"].to_i
+TUNNEL_TARGET_PORT = (LAB["tunnel_target_port"] || LAB["web_port"]).to_i
+
+# node keys come from YAML as strings; normalise to symbols for the rest of
+# the file, which has always used symbol keys
+NODES = Array(LAB["nodes"]).map do |n|
+  raise "every node needs a name: #{n.inspect}" if n["name"].to_s.strip.empty?
+  h = n.transform_keys(&:to_sym)
+  # lab.yml writes role as a plain string ("peer") while the built-in defaults
+  # use a symbol (:peer). Without this, every `cfg[:role] == :peer` test is
+  # silently false, so peers never get their tunnel unit staged and the build
+  # dies with "missing staged file /tmp/ssh-tunnel.sh".
+  if h[:role]
+    r = h[:role].to_s.strip.downcase
+    unless %w[primary peer].include?(r)
+      raise "node #{h[:name]}: role must be 'primary' or 'peer', got #{h[:role].inspect}"
+    end
+    h[:role] = r.to_sym
+  end
+  h
+end
+
+if PROVIDER == "vmware_desktop" && !NODES.nil? && !NODES.empty?
+  patched = patch_box_vmx(BOX)
+  if patched && !patched.empty?
+    patched.each do |name, orphans|
+      puts "==> [lab] box fix: #{name} had a disk slot with no filename " \
+           "(#{orphans.join(", ")}), which crashes vagrant-vmware-desktop when a"
+      puts "==> [lab]          second disk is attached. Added an empty filename. " \
+           "Original saved as <box>.vmx.pre-lab-disk-fix"
+    end
+  elsif !Dir.exist?(File.join(ENV["VAGRANT_HOME"] || File.join(Dir.home, ".vagrant.d"),
+                             "boxes", BOX.gsub("/", "-VAGRANTSLASH-")))
+    puts "==> [lab] NOTE: box #{BOX} is not downloaded yet."
+    puts "==> [lab]        The first 'vagrant up' downloads it and may then fail on:"
+    puts "==> [lab]          TypeError: no implicit conversion of nil into String"
+    puts "==> [lab]        (a vagrant-vmware-desktop bug with this box). Just run"
+    puts "==> [lab]        'vagrant up' a second time - this check then patches it."
+  end
+end
+
+# #############################################################################
+# #  END CONFIG  --  everything below is generic, no edits needed               #
+# #############################################################################
+
+# ---- fill in defaults -------------------------------------------------------
+NODES.each_with_index do |n, i|
+  n[:role] = i.zero? ? :primary : :peer if n[:role].nil?
+  n[:ip]   = "#{SUBNET}.#{11 + i}"              if n[:ip].nil?
+  n[:ram]  = 4096                               if n[:ram].nil?
+  n[:cpus] = 2                                  if n[:cpus].nil?
+  n[:disk] = "30GB"                             if n[:disk].nil?
+  n[:gui]  = GUI                                if n[:gui].nil?
+  n[:no_sleep] = NO_SLEEP                        if n[:no_sleep].nil?
+  n[:label] = n[:name]                          if n[:label].nil?
+end
+
+# ---- validate ---------------------------------------------------------------
+raise "NODES is empty - add at least one entry" if NODES.empty?
+
+# ---- provider ---------------------------------------------------------------
+SUPPORTED_PROVIDERS = {
+  "vmware_desktop" => { label: "VMware Workstation / Fusion", tested: true },
+  "virtualbox"     => { label: "Oracle VirtualBox",            tested: false },
+  "hyperv"         => { label: "Microsoft Hyper-V",            tested: false },
+}
+unless SUPPORTED_PROVIDERS.key?(PROVIDER)
+  raise <<~MSG
+    unknown PROVIDER #{PROVIDER.inspect}
+      valid options: #{SUPPORTED_PROVIDERS.keys.join(', ')}
+    Pick one and run vagrant up again. (A stray space is the usual cause.)
+  MSG
+end
+PROVIDER_INFO = SUPPORTED_PROVIDERS[PROVIDER]
+
+# ---- is the provider's Vagrant plugin actually installed? -------------------
+# Without this, a missing plugin does not fail loudly: Vagrant simply matches
+# no provider block, falls back to whatever it finds first, and your RAM/CPU
+# and disk settings are discarded without a word.
+begin
+  # the registry keys are Symbols, so compare as Strings - join/sort make them
+  # *look* like strings, which hides the mismatch until include? silently
+  # returns false and the guard rejects a provider that is in fact installed
+  _have = Vagrant.plugin("2").manager.providers.keys.map(&:to_s)
+rescue StandardError
+  _have = nil # could not introspect the registry; do not block the build on it
+end
+if _have && !_have.include?(PROVIDER)
+  hint = case PROVIDER
+         when "vmware_desktop" then "vagrant plugin install vagrant-vmware-desktop"
+         else "#{PROVIDER} needs its Vagrant plugin installed too"
+         end
+  raise "the Vagrant provider plugin for #{PROVIDER.inspect} is not installed.\n  fix: #{hint}\n  installed providers: #{_have.sort.join(', ')}"
+end
+
+primaries = NODES.select { |n| n[:role] == :primary }
+raise "only one node may have role: :primary (found #{primaries.size})" if primaries.size > 1
+
+# Guard against a config-source mismatch (lab.yml strings vs built-in symbols)
+# silently disabling the per-role file provisioners. Cheap to check here,
+# expensive to discover halfway through a build.
+_stray = NODES.reject { |n| [:primary, :peer].include?(n[:role]) }
+unless _stray.empty?
+  raise "node roles must be the symbols :primary / :peer, got " \
+        "#{_stray.map { |n| "#{n[:name]}=#{n[:role].inspect}" }.join(', ')}"
+end
+
+PRIMARY = primaries.first || NODES.first
+PEERS   = NODES - [PRIMARY]
+PEERS.each_with_index { |n, i| n[:tunnel_port] = TUNNEL_PORT + i }
+_missing = PEERS.select { |n| n[:tunnel_port].nil? }
+raise "these peers have no tunnel port, so they cannot be provisioned: " \
+      "#{_missing.map { |n| n[:name] }.join(', ')}" unless _missing.empty?
+
+%w[name ip].each do |field|
+  dupes = NODES.group_by { |n| n[field.to_sym] }.select { |_, v| v.size > 1 }.keys
+  raise "duplicate node #{field}: #{dupes.join(', ')}" unless dupes.empty?
+end
+
+EXPORT_CIDR = "#{SUBNET}.0/24"
+# "18080=ubuntu-node-2,18081=ubuntu-node-3" - lets the probe page name the peer
+TUNNEL_MAP  = PEERS.map { |n| "#{n[:tunnel_port]}=#{n[:name]}" }.join(",")
+
+puts "==> [lab] #{NODES.size} VM(s), #{(NODES.map { |n| n[:ram] }.sum / 1024.0).round(1)} GB RAM total"
+puts "==> [lab] primary: #{PRIMARY[:name]} (#{PRIMARY[:ip]})   peers: #{PEERS.map { |n| "#{n[:name]}=#{n[:tunnel_port]}" }.join(' ') || 'none'}"
+if PROVIDER_INFO[:tested]
+  puts "==> [lab] provider: #{PROVIDER} (#{PROVIDER_INFO[:label]})"
+else
+  puts "==> [lab] provider: #{PROVIDER} (#{PROVIDER_INFO[:label]})  ** UNTESTED **"
+  puts "==> [lab]          this path has never been run - it was written to spec only."
+  puts "==> [lab]          the lab features that matter (host-only network, NFS, SSH"
+  puts "==> [lab]          tunnel, hardening) are provider-agnostic, but resource and"
+  puts "==> [lab]          disk settings for this provider are unconfirmed."
+end
+
+puts "==> [lab] flavour : #{DESKTOP ? 'desktop (GNOME, auto-login)' : 'server (headless, no GUI packages)'}"
+if DEMO
+  puts "==> [lab] demo    : ON  - probe web app on #{PRIMARY[:name]}:#{WEB_PORT}" \
+       "#{DESKTOP ? ', browsers auto-opened' : ' (check it with curl - no desktop)'}"
+else
+  puts "==> [lab] demo    : OFF - no web app, no auto-opened browsers."
+  puts "==> [lab]          each peer's tunnel forwards to #{PRIMARY[:ip]}:#{TUNNEL_TARGET_PORT}."
+  if PEERS.any?
+    puts "==> [lab]          nothing is listening there yet unless you start it, so the"
+    puts "==> [lab]          tunnel will be up but the far end will not answer."
+  end
+end
+
+# ---- warn about machines that exist on disk but are no longer configured -----
+# Deleting an entry from NODES makes Vagrant forget that VM: it keeps running in
+# the hypervisor, untracked, and "vagrant destroy <name>" stops working. An
+# empty directory left behind by an earlier run is only residue, so require real
+# state inside it before calling it an orphan.
+machines_dir = File.join(project_dir, ".vagrant", "machines")
+orphans = []
+if Dir.exist?(machines_dir)
+  orphans = Dir.children(machines_dir).select do |name|
+    next false if NODES.any? { |n| n[:name] == name }
+    state = File.join(machines_dir, name)
+    Dir.exist?(state) && !Dir.children(state).empty?
+  end.sort
+end
+
+unless orphans.empty?
+  puts "==> [lab] WARNING: #{orphans.size} VM(s) exist on disk but are not in NODES:"
+  orphans.each { |o| puts "==> [lab]            - #{o}   (still running, Vagrant no longer tracks it)" }
+  puts "==> [lab]          to keep one:  add it back to NODES."
+  puts "==> [lab]          to drop one:   vagrant global-status --prune"
+  puts "==> [lab]                         then delete the VM in the hypervisor."
+  puts "==> [lab]          NOTE: 'vagrant destroy <name>' only works while the entry is still"
+  puts "==> [lab]          in NODES - always destroy BEFORE deleting the line."
+  puts ""
+end
+
+# ---- warn if the configured data disk is tiny --------------------------------
+# The data disk is created at exactly the configured size, so there is no floor
+# to enforce - this only flags a size that is too small to be useful, which is
+# a judgement call rather than a provider limitation.
+# (The root disk used to be warned about here. It is now the box's own disk,
+# left untouched: VMware cannot shrink a virtual disk, so a smaller request was
+# never achievable and only ever produced "Shrinking disks is not supported".)
+tiny_data = NODES.select do |n|
+  raw = n[:disk].to_s
+  num = raw[/\d+/].to_i
+  num *= 1024 if raw =~ /t/i
+  num < 4
+end
+
+unless tiny_data.empty?
+  puts "==> [lab] WARNING: #{tiny_data.size} node(s) have a data disk under 4 GB:"
+  tiny_data.each { |n| puts "==> [lab]            - #{n[:name]}: #{n[:disk]}" }
+  puts "==> [lab]          It will be created and mounted, but a few GB fills up fast."
+  puts ""
+end
+
+# ---- warn if the HOST will put the VMs to sleep ------------------------------
+# NO_SLEEP stops a guest suspending itself, but it cannot stop the hypervisor
+# forcing a suspend when the host sleeps. powercfg's labels are localised, so
+# the two values are read positionally (the last two hex fields of a single
+# setting query are always "Current AC" then "Current DC"). Units are seconds.
+SUB_SLEEP_GUID    = "238c9fa8-0aad-41ed-83f4-97be242c8f20"
+SUB_BUTTONS_GUID  = "4f971e89-eebd-4455-a8de-9e59040e7347"
+STANDBYIDLE_GUID  = "29f6c1db-86da-48c5-9fdb-f2b67b1f44da"
+HIBERNATEIDLE_GUID = "9d7815a6-7ee4-497e-8888-515a05f02364"
+LIDACTION_GUID    = "5ca83367-6e45-459f-a27b-476b1d01c936"
+MAX_PLAUSIBLE_SLEEP = 7 * 24 * 3600   # a week: anything wilder means we mis-parsed
+
+def host_power_reading
+  return nil unless RUBY_PLATFORM =~ /mswin|mingw|cygwin/
+  require "open3"
+  read = lambda do |sub, set|
+    out, _st = Open3.capture2("powercfg", "/query", "SCHEME_CURRENT", sub, set)
+    hex = out.scan(/0x[0-9a-fA-F]{8}/)
+    hex.size >= 2 ? [hex[-2].to_i(16), hex[-1].to_i(16)] : nil
+  end
+  {
+    standby:   read.call(SUB_SLEEP_GUID, STANDBYIDLE_GUID),
+    hibernate: read.call(SUB_SLEEP_GUID, HIBERNATEIDLE_GUID),
+    # absent on desktops with no lid - that is fine, it just means no lid
+    lid:       read.call(SUB_BUTTONS_GUID, LIDACTION_GUID),
+  }
+rescue StandardError
+  nil
+end
+
+if CHECK_HOST_POWER
+  hp = host_power_reading
+  if hp
+    fmt = lambda do |secs|
+      return "never" if secs.zero?
+      return "#{secs}s" if secs < 60 || (secs % 60).nonzero?
+      "#{secs / 60} min"
+    end
+    ac_issues = []
+    dc_issues = []
+    # A LIDACTION setting only exists on machines that actually have a lid, which
+    # makes it a free proxy for "this is a laptop". Battery-only findings are
+    # therefore only reported when one is present - on a desktop the DC values
+    # are leftovers from the OEM image and mean nothing.
+    lid_present = !hp[:lid].nil?
+    if (s = hp[:standby])
+      ac_issues << "sleeps after #{fmt.call(s[0])} (plugged in)" if s[0].between?(1, MAX_PLAUSIBLE_SLEEP)
+      dc_issues << "sleeps after #{fmt.call(s[1])} (on battery)" if lid_present && s[1].between?(1, MAX_PLAUSIBLE_SLEEP)
+    end
+    if (h = hp[:hibernate])
+      ac_issues << "hibernates after #{fmt.call(h[0])} (plugged in)" if h[0].between?(1, MAX_PLAUSIBLE_SLEEP)
+    end
+    if (l = hp[:lid]) && l[0].between?(1, 3)
+      ac_issues << "lid action is #{%w[do-nothing sleep hibernate shutdown][l[0]]}"
+    end
+
+    if ac_issues.empty? && dc_issues.empty?
+      puts "==> [lab] host power: OK, the host will not sleep the VMs (AC standby/hibernate disabled)"
+    else
+      puts "==> [lab] WARNING: the Windows host is set to sleep. NO_SLEEP inside the guests"
+      puts "==> [lab]          cannot prevent that - the hypervisor will suspend the VMs."
+      ac_issues.each { |i| puts "==> [lab]            plugged in : #{i}" }
+      dc_issues.each { |i| puts "==> [lab]            battery     : #{i}" }
+      puts "==> [lab]          Fix: Settings > System > Power > 'When plugged in, put the device"
+      puts "==> [lab]          to sleep: Never'   (or: powercfg /change standby-timeout-ac 0)"
+    end
+  end
+end
+
+# ---- one keypair shared by every node ---------------------------------------
+# Generated once on the HOST so the nodes can be provisioned in any order and
+# still end up with identical key material. Vagrant ships it to all of them.
+key_dir     = File.join(project_dir, ".vagrant", "keys")
+tunnel_key  = File.join(key_dir, "tunnel_ed25519")
+
+unless File.exist?(tunnel_key) && File.exist?("#{tunnel_key}.pub")
+  FileUtils.mkdir_p(key_dir)
+  FileUtils.rm_f([tunnel_key, "#{tunnel_key}.pub"])
+  puts "==> [tunnel] generating shared SSH keypair: #{tunnel_key}"
+  # NOTE: the empty "-N" passphrase must be passed as a real empty argument.
+  # Ruby's spawn does that correctly; cmd.exe/PowerShell silently drop it.
+  system("ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "vagrant-lab-tunnel", "-f", tunnel_key)
+  unless File.exist?("#{tunnel_key}.pub")
+    system("ssh-keygen", "-q", "-t", "rsa", "-b", "2048", "-N", "", "-C", "vagrant-lab-tunnel", "-f", tunnel_key)
+  end
+  raise "[tunnel] could not create #{tunnel_key} - is ssh-keygen on PATH?" unless File.exist?("#{tunnel_key}.pub")
+end
+
+# ---- guest-side scripts, rendered here on the host --------------------------
+# Vagrant's "file" provisioner only takes :source (no :content), so the payloads
+# are written next to the Vagrantfile and shipped as plain files. LF endings are
+# required: the tunnel client and the orchestrator are bash.
+gen_dir = File.join(project_dir, ".vagrant", "tunnel")
+FileUtils.mkdir_p(gen_dir)
+gen_files = {}
+
+# The probe web app is DEMO-only scaffolding. With DEMO=false nothing here is
+# generated, shipped, installed or started, and no browsers are opened.
+web_py = <<~'PYWEB'
+  #!/usr/bin/env python3
+  """Tunnel Lab probe service - provisioned by VMs-Labs/Vagrantfile.
+
+  Runs on the primary node and is reachable two different ways:
+
+    DIRECT    http://<primary>:8080/     a peer talks straight to the primary
+    TUNNELLED http://127.0.0.1:18080/    a peer -> ssh -L -> primary:8080
+
+  TUNNEL_MAP arrives as "18080=node-2,18081=node-3", so the page can tell you
+  which peer a tunnelled request came from and label the route accordingly.
+  """
+  import base64
+  import html
+  import json
+  import os
+  import sys
+  import threading
+  import time
+  from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+  PORT = int(os.environ.get("WEB_PORT", "8080"))
+  # Bind to the host-only address, never 0.0.0.0: the NAT interface must not
+  # expose the probe service. Set via BIND in tunnel-web.service.
+  BIND = os.environ.get("BIND", "0.0.0.0")
+  SERVER = os.uname().nodename
+
+  TUNNEL_MAP = {}
+  for pair in os.environ.get("TUNNEL_MAP", "").split(","):
+      if "=" in pair:
+          port, owner = pair.split("=", 1)
+          TUNNEL_MAP[port.strip()] = owner.strip()
+
+  STARTED = time.time()
+  FAVICON = base64.b64decode("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7")
+  _lock = threading.Lock()
+  _hits = 0
+
+  PAGE = """<!DOCTYPE html>
+  <html lang="en">
+  <head>
+  <meta charset="utf-8">
+  <title>SSH Tunnel Lab</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: flex; align-items: center;
+           justify-content: center; padding: 26px; color: #e7ebf3;
+           font-family: Ubuntu, "DejaVu Sans", system-ui, sans-serif;
+           background: radial-gradient(circle at 18% 0%, #1b2333 0%, #0c0e13 62%); }
+    .card { width: 100%; max-width: 800px; padding: 30px 34px; border-radius: 16px;
+            background: #141821; border: 1px solid #262c3a;
+            box-shadow: 0 24px 60px rgba(0,0,0,.55); }
+    h1 { margin: 0; font-size: 15px; letter-spacing: .18em; text-transform: uppercase;
+         color: #8b93a7; font-weight: 600; }
+    h2 { margin: 12px 0 6px; font-size: 24px; line-height: 1.25; }
+    .b-tunnel { color: #3ddc97; }
+    .b-direct { color: #6ea8fe; }
+    .sub { margin: 0 0 20px; font-size: 14px; color: #8b93a7; }
+    .row { display: flex; justify-content: space-between; gap: 18px; padding: 10px 0;
+           border-bottom: 1px solid #1e2431; }
+    .row:last-of-type { border-bottom: 0; }
+    .k { color: #8b93a7; font-size: 14px; white-space: nowrap; }
+    .v { font-size: 14px; text-align: right; word-break: break-all;
+         font-family: "Ubuntu Mono", "DejaVu Sans Mono", monospace; }
+    .good { color: #3ddc97; }
+    .warn { color: #ffb454; }
+    .note { margin-top: 20px; padding: 14px 16px; font-size: 13.5px; line-height: 1.6;
+            color: #b9c0d0; background: #10141c; border-left: 3px solid #6ea8fe;
+            border-radius: 0 8px 8px 0; }
+    .foot { margin-top: 18px; display: flex; align-items: center; gap: 12px; }
+    button { background: #232a38; color: #e7ebf3; border: 1px solid #333c4e;
+             border-radius: 8px; padding: 9px 15px; font-size: 13px; cursor: pointer;
+             font-family: inherit; }
+    button:hover { background: #2b3444; }
+    .tick { font-size: 12.5px; color: #767f94; }
+  </style>
+  </head>
+  <body>
+  <div class="card">
+    <h1>SSH Tunnel Lab</h1>
+    <h2 class="@@CLASS@@">@@ROUTE@@</h2>
+    <div class="sub">@@SUBTITLE@@</div>
+    <div class="row"><span class="k">Browser asked for (Host header)</span><span class="v @@HOSTCLASS@@">@@HOSTHDR@@</span></div>
+    <div class="row"><span class="k">Source address seen by the server</span><span class="v">@@CLIENTIP@@</span></div>
+    <div class="row"><span class="k">Path the request travelled</span><span class="v">@@PATH@@</span></div>
+    <div class="row"><span class="k">Tunnel port owner</span><span class="v">@@OWNER@@</span></div>
+    <div class="row"><span class="k">Requests served</span><span class="v">@@HITS@@</span></div>
+    <div class="row"><span class="k">Server uptime</span><span class="v" id="up">@@UPTIME@@</span></div>
+    <div class="row"><span class="k">Server clock</span><span class="v" id="clock">--:--:--</span></div>
+    <div class="note">@@NOTE@@</div>
+    <div class="foot">
+      <button onclick="location.reload()">Refresh now</button>
+      <button id="autoBtn">Pause auto-refresh</button>
+      <span class="tick" id="state">auto-refresh every 4s - watch the request counter climb</span>
+    </div>
+  </div>
+  <script>
+    var started = @@STARTED@@, t0 = Date.now();
+    function pad(n) { return (n < 10 ? "0" : "") + n; }
+    function dur(s) {
+      var h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = Math.floor(s % 60);
+      return h + "h " + pad(m) + "m " + pad(x) + "s";
+    }
+    function tick() {
+      var d = new Date();
+      document.getElementById("clock").textContent =
+        pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+      document.getElementById("up").textContent = dur(started + (Date.now() - t0) / 1000);
+    }
+    setInterval(tick, 1000); tick();
+    var auto = true, timer = null;
+    function arm() {
+      clearInterval(timer);
+      timer = setInterval(function () { if (auto) { location.reload(); } }, 4000);
+    }
+    arm();
+    document.getElementById("autoBtn").onclick = function () {
+      auto = !auto;
+      this.textContent = auto ? "Pause auto-refresh" : "Resume auto-refresh";
+      document.getElementById("state").textContent = auto
+        ? "auto-refresh every 4s - watch the request counter climb" : "paused";
+    };
+  </script>
+  </body>
+  </html>
+  """
+
+  class Handler(BaseHTTPRequestHandler):
+      server_version = "TunnelLab/1.0"
+      protocol_version = "HTTP/1.1"
+
+      def _respond(self, code, body, ctype="text/html; charset=utf-8"):
+          raw = body if isinstance(body, bytes) else body.encode("utf-8")
+          self.send_response(code)
+          self.send_header("Content-Type", ctype)
+          self.send_header("Content-Length", str(len(raw)))
+          self.send_header("Cache-Control", "no-store")
+          self.end_headers()
+          if raw:
+              self.wfile.write(raw)
+
+      def _snapshot(self):
+          global _hits
+          host = self.headers.get("Host", "(none)")
+          port = host.rsplit(":", 1)[-1] if ":" in host else "80"
+          owner = TUNNEL_MAP.get(port)
+          tunnelled = owner is not None
+          with _lock:
+              _hits += 1
+              hits = _hits
+          client = self.client_address[0]
+          if tunnelled:
+              route = "REACHED THROUGH THE SSH TUNNEL"
+              subtitle = "Requested on " + owner + ", rendered by " + SERVER
+              path = owner + " browser > 127.0.0.1:" + port + " > ssh -L > " + SERVER + ":" + str(PORT)
+              note = ("This browser lives on <b>" + owner + "</b> and asked for 127.0.0.1:" + port +
+                      " - a port that exists <b>only on that node</b> - yet this page is rendered by <b>" +
+                      SERVER + "</b>, which does not listen on that port at all. The request was carried " +
+                      "inside the SSH session, and the far end of that session then opened a brand-new " +
+                      "connection to the primary's host-only address. That is why the source address above is " +
+                      "the primary itself rather than " + owner + " - it is a new connection, not a relayed one. " +
+                      "The proof is the <b>Host header</b> and the fact that the tunnel is scoped to port " +
+                      port + " only.")
+          else:
+              route = "DIRECT - NO TUNNEL INVOLVED"
+              subtitle = "Ordinary TCP to the peer over the host-only network"
+              path = "browser > " + SERVER + ":" + str(PORT) + " (no SSH hop)"
+              note = ("Straight to " + SERVER + " over the host-only network, no SSH involved. Here the server " +
+                      "sees the <b>real</b> address of the machine that opened the browser (" + client +
+                      "), which is the clearest difference between this tab and a tunnelled one.")
+          return {
+              "route": route, "subtitle": subtitle, "path": path, "note": note,
+              "tunnelled": tunnelled, "server": SERVER, "host_header": host,
+              "client_ip": client, "hits": hits, "owner": owner or "(none - not a tunnel port)",
+              "uptime": int(time.time() - STARTED), "started": STARTED,
+              "remote": str(self.client_address), "time": time.strftime("%Y-%m-%d %H:%M:%S"),
+              "tunnel_map": TUNNEL_MAP,
+          }
+
+      def _page(self, s):
+          vals = {
+              "CLASS": "b-tunnel" if s["tunnelled"] else "b-direct",
+              "ROUTE": s["route"], "SUBTITLE": s["subtitle"],
+              "HOSTHDR": s["host_header"],
+              # the Host header is the reliable discriminator: a tunnel port
+              # exists only on its peer, so seeing it here is the proof
+              "HOSTCLASS": "good" if s["tunnelled"] else "warn",
+              "CLIENTIP": s["client_ip"], "PATH": s["path"], "OWNER": s["owner"],
+              "HITS": s["hits"], "UPTIME": str(s["uptime"]) + "s", "NOTE": s["note"],
+              "STARTED": repr(s["started"]),
+          }
+          # only the values that came from the request itself get escaped
+          escape = ("HOSTHDR", "CLIENTIP", "SUBTITLE")
+          page = PAGE
+          for k, v in vals.items():
+              text = html.escape(str(v), quote=True) if k in escape else str(v)
+              page = page.replace("@@" + k + "@@", text)
+          return page
+
+      def do_GET(self):
+          path = self.path.split("?", 1)[0]
+          if path == "/favicon.ico":
+              return self._respond(200, FAVICON, "image/gif")
+          snap = self._snapshot()
+          if path == "/health":
+              return self._respond(200, json.dumps(snap, indent=2) + "\n", "application/json")
+          self._respond(200, self._page(snap))
+
+      def log_message(self, fmt, *args):
+          sys.stderr.write("[tunnel-web] %s - %s\n" % (self.address_string(), fmt % args))
+
+  if __name__ == "__main__":
+      srv = ThreadingHTTPServer((BIND, PORT), Handler)
+      srv.daemon_threads = True
+      print("[tunnel-web] listening on %s:%d  tunnels=%s" % (BIND, PORT, TUNNEL_MAP or "none"), flush=True)
+      srv.serve_forever()
+PYWEB
+
+web_service = <<~UNIT1
+  [Unit]
+  Description=Tunnel Lab probe web service (Vagrant-managed)
+  After=network-online.target
+  Wants=network-online.target
+
+  [Service]
+  Type=simple
+  User=#{NEW_USER}
+  Group=#{NEW_USER}
+  Environment=HOME=/home/#{NEW_USER}
+  Environment=WEB_PORT=#{WEB_PORT}
+  Environment=BIND=#{PRIMARY[:ip]}
+  Environment=TUNNEL_MAP=#{TUNNEL_MAP}
+  ExecStart=/usr/bin/python3 /usr/local/bin/tunnel-web.py
+  WorkingDirectory=/home/#{NEW_USER}
+  Restart=always
+  RestartSec=2
+
+  [Install]
+  WantedBy=multi-user.target
+UNIT1
+
+if DEMO
+  gen_files["tunnel-web.py"]      = web_py
+  gen_files["tunnel-web.service"] = web_service
+end
+gen_files["ssh-tunnel.sh"] = <<~'TUNSH'
+  #!/bin/bash
+  # Managed by VMs-Labs/Vagrantfile
+  # Generic tunnel client - all topology comes from the Environment= lines in
+  # ssh-tunnel.service, so one copy of this script serves every peer node.
+  #   127.0.0.1:$TUNNEL_PORT (this node)  --ssh -L-->  $TARGET_IP:$TARGET_PORT (primary)
+  set -u
+
+  TARGET_IP="${TARGET_IP:?TARGET_IP is not set}"
+  LAB_USER="${LAB_USER:-Mouhcine}"
+  TUNNEL_PORT="${TUNNEL_PORT:-18080}"
+  TARGET_PORT="${TARGET_PORT:-8080}"
+  KEY="/home/$LAB_USER/.ssh/tunnel_ed25519"
+  KNOWN="/home/$LAB_USER/.ssh/known_hosts"
+
+  SSH_OPTS="-N -T
+    -o ExitOnForwardFailure=yes
+    -o ServerAliveInterval=15
+    -o ServerAliveCountMax=3
+    -o StrictHostKeyChecking=accept-new
+    -o IdentitiesOnly=yes
+    -o ConnectTimeout=10
+    -o LogLevel=ERROR"
+
+  if [ ! -r "$KEY" ]; then
+    echo "[ssh-tunnel] cannot read $KEY" >&2
+    exit 1
+  fi
+
+  # Re-pin the host key on EVERY attempt, not once at startup.
+  # A rebuilt primary comes back with a new SSH host key, and
+  # StrictHostKeyChecking=accept-new refuses a *changed* key outright (it only
+  # tolerates an unknown one). Pinning once meant the tunnel never recovered
+  # from a primary rebuild without a manual "systemctl restart ssh-tunnel" on
+  # every peer. This runs only while disconnected - the loop blocks in "wait"
+  # while the link is up - so it costs one keyscan per reconnect attempt.
+  # Trade-off: re-pinning on reconnect gives up perfect host-key pinning. On an
+  # isolated host-only segment with no untrusted parties that is the right
+  # trade; on a routable network, pin once and restart the unit instead.
+  repin() {
+    ssh-keygen -R "$TARGET_IP" -f "$KNOWN" >/dev/null 2>&1
+    ssh-keyscan -T 5 -H "$TARGET_IP" >> "$KNOWN" 2>/dev/null
+  }
+
+  repin
+  while true; do
+    if command -v autossh >/dev/null 2>&1; then
+      autossh -M 0 $SSH_OPTS -i "$KEY" \
+        -L 127.0.0.1:$TUNNEL_PORT:$TARGET_IP:$TARGET_PORT "$LAB_USER@$TARGET_IP" &
+    else
+      ssh $SSH_OPTS -i "$KEY" \
+        -L 127.0.0.1:$TUNNEL_PORT:$TARGET_IP:$TARGET_PORT "$LAB_USER@$TARGET_IP" &
+    fi
+    wait $!
+    echo "[ssh-tunnel] link to $TARGET_IP dropped, reconnecting in 3s..." >&2
+    sleep 3
+    repin
+  done
+TUNSH
+
+# One unit per peer, carrying that peer's own forward port.
+PEERS.each do |peer|
+  gen_files["ssh-tunnel-#{peer[:name]}.service"] = <<~UNIT2
+    [Unit]
+    Description=SSH local-forward tunnel to #{PRIMARY[:name]} from #{peer[:name]} (Vagrant-managed)
+    After=network-online.target
+    Wants=network-online.target
+
+    [Service]
+    Type=simple
+    User=#{NEW_USER}
+    Group=#{NEW_USER}
+    Environment=HOME=/home/#{NEW_USER}
+    Environment=LAB_USER=#{NEW_USER}
+    Environment=TARGET_IP=#{PRIMARY[:ip]}
+    Environment=TARGET_PORT=#{TUNNEL_TARGET_PORT}
+    Environment=TUNNEL_PORT=#{peer[:tunnel_port]}
+    ExecStart=/usr/local/bin/ssh-tunnel.sh
+    Restart=always
+    RestartSec=3
+    TimeoutStopSec=10
+
+    [Install]
+    WantedBy=multi-user.target
+  UNIT2
+end
+
+gen_files["tunnel-demo-open.sh"] = <<~GUISH
+  #!/bin/bash
+  # Managed by VMs-Labs/Vagrantfile
+  # Open a URL inside the auto-logged-in GNOME session of the lab user, reusing
+  # that session's real environment (this lab runs a Wayland session).
+  #   usage: tunnel-demo-open.sh <url> [user]
+  set -u
+
+  URL="${1:?url required}"
+  LAB_USER="${2:-#{NEW_USER}}"
+  LUID="$(id -u "$LAB_USER")"
+
+  # Wait for the auto-login session. On a fresh "vagrant up" gdm3 has only just
+  # been restarted and the desktop may not exist yet, so bailing out here would
+  # silently skip the GUI demo. SESSION_TIMEOUT is the give-up point.
+  SESSION_TIMEOUT="${SESSION_TIMEOUT:-240}"
+  for _ in $(seq 1 "$SESSION_TIMEOUT"); do
+    pgrep -u "$LUID" -x gnome-shell >/dev/null 2>&1 && break
+    sleep 1
+  done
+  if ! pgrep -u "$LUID" -x gnome-shell >/dev/null 2>&1; then
+    echo "[gui] no gnome-shell session for $LAB_USER after ${SESSION_TIMEOUT}s" >&2
+    exit 1
+  fi
+
+  # the session exists; now wait for its D-Bus bus to accept connections
+  for _ in $(seq 1 90); do
+    [ -S "/run/user/$LUID/bus" ] && break
+    sleep 1
+  done
+
+  ENVARGS=(env "HOME=/home/$LAB_USER" "USER=$LAB_USER" "LOGNAME=$LAB_USER"
+           "XDG_RUNTIME_DIR=/run/user/$LUID"
+           "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$LUID/bus")
+  [ -S "/run/user/$LUID/wayland-0" ] && ENVARGS+=("WAYLAND_DISPLAY=wayland-0")
+  [ -S /tmp/.X11-unix/X0 ]           && ENVARGS+=("DISPLAY=:0")
+
+  setsid sudo -u "$LAB_USER" -H "${ENVARGS[@]}" \
+    firefox --new-window "$URL" >/tmp/tunnel-demo-firefox.log 2>&1 </dev/null &
+  echo "[gui] opened $URL for $LAB_USER (log: /tmp/tunnel-demo-firefox.log)"
+GUISH
+
+gen_files.each do |fname, body|
+  path = File.join(gen_dir, fname)
+  if !File.exist?(path) || File.read(path) != body
+    File.open(path, "wb") { |f| f.write(body) }
+    puts "==> [tunnel] wrote #{path} (#{body.bytesize} bytes)"
+  end
+end
+
+# Drop generated payloads this configuration no longer uses, so the directory
+# reflects reality instead of accumulating demo files from an earlier run.
+stale = DEMO ? [] : %w[tunnel-web.py tunnel-web.service]
+stale.each do |fname|
+  path = File.join(gen_dir, fname)
+  next unless File.exist?(path)
+  File.delete(path)
+  puts "==> [tunnel] removed stale #{path} (DEMO=false)"
+end
+
+Vagrant.configure("2") do |config|
+  NODES.each do |cfg|
+    config.vm.define cfg[:name] do |node|
+      node.vm.box = BOX
+      node.vm.hostname = cfg[:name]
+
+      # Private Host-Only Network: not routable, not reachable from the internet
+      # Data disk size in MB, handed to the guest script so it can identify the
+      # right device by size as well as by "not in use". Parsed the way the
+      # installer parses it: a bare number means GB, T means TB. lsblk reports
+      # -b bytes and this is compared in MB.
+      data_mb = begin
+        raw = cfg[:disk].to_s
+        num = raw[/\d+/].to_f
+        num *= (1024 * 1024) if raw =~ /t/i   # TB -> GB
+        (num * 1024).to_i                     # GB (explicit or bare) -> MB
+      end
+
+      node.vm.network "private_network", ip: cfg[:ip]
+
+      # ---- disks -----------------------------------------------------------
+      # The ROOT disk is the box's own, left exactly as it is. It cannot be made
+      # smaller: VMware refuses to shrink a virtual disk ("Shrinking disks is
+      # not supported") and vmware-vdiskmanager -k is a no-op on this box
+      # because the GPT backup header sits at the end of the 64 GB disk. So it
+      # is not declared here at all - declaring it only produced a scary warning
+      # and changed nothing. It is sparse, so a fresh VM uses about 7 GB.
+      #
+      # The DATA disk is a second, independent disk whose size is exactly the
+      # :disk you configure - any size, no floor. It is formatted, mounted and
+      # used by the provisioning script below, and the NFS share lives on it, so
+      # "disk: 25GB" really does give you 25 GB of storage.
+      node.vm.disk :disk, size: cfg[:disk], primary: false, name: "lab-data"
+
+      # ---- resources -------------------------------------------------------
+      # TESTED: vmware_desktop. The other two branches are written to spec but
+      # have never been run here - no VirtualBox/Hyper-V on this machine.
+      node.vm.provider PROVIDER do |v|
+        v.gui = cfg[:gui]
+        case PROVIDER
+        when "vmware_desktop"
+          v.vmx["DisplayName"] = cfg[:label]
+          v.vmx["memsize"] = cfg[:ram].to_s
+          v.vmx["numvcpus"] = cfg[:cpus].to_s
+
+          # vagrant-vmware-desktop 3.0.5 crashes as soon as a NON-primary disk
+          # is attached, with:
+          #   disk.rb:129 File.extname(v["filename"])
+          #   TypeError: no implicit conversion of nil into String
+          # Cause: driver/base.rb#get_disks() groups every "<bus>N:M.<attr>" key
+          # in the VMX into one hash per slot, and cap/disk.rb#get_disk() then
+          # calls File.extname on v["filename"] for every slot with no nil
+          # guard. The bento box ships a stray
+          #     scsi0:0.redo = ""
+          # with no matching scsi0:0.filename, so that slot hashes to
+          # {"redo" => ""} and v["filename"] is nil. A primary disk never hits
+          # this line - it is looked up through PRIMARY_DISK_SLOTS instead -
+          # which is why the lab worked until the data disk was added.
+          # Giving the unused slot an empty filename removes the nil. Safe here:
+          # the box's real disk is sata0:0/disk-000004.vmdk and scsi0.present is
+          # already "FALSE". Guarded on the box name so a custom box whose disk
+          # really does live on scsi0:0 is not clobbered.
+          v.vmx["scsi0:0.filename"] = "" if BOX.start_with?("bento/ubuntu-24.04")
+        when "virtualbox"
+          v.name = cfg[:label]
+          v.customize ["modifyvm", :id,
+                       "--memory", cfg[:ram].to_s,
+                       "--cpus",   cfg[:cpus].to_s]
+        when "hyperv"
+          v.cpus   = cfg[:cpus]
+          v.memory = cfg[:ram]
+        end
+      end
+
+      # =======================================================================
+      #  Base provisioner: desktop, user, NFS sharing, auto-login
+      # =======================================================================
+      node.vm.provision "shell", inline: <<-SHELL
+        export DEBIAN_FRONTEND=noninteractive
+
+        NEW_USER=#{Shellwords.escape(NEW_USER)}
+        NEW_PASS=#{Shellwords.escape(NEW_PASS)}
+        DESKTOP="#{DESKTOP ? 1 : 0}"
+        NODE_NAME="#{cfg[:name]}"
+        PRIMARY_NAME="#{PRIMARY[:name]}"
+        PRIMARY_IP="#{PRIMARY[:ip]}"
+        EXPORT_CIDR="#{EXPORT_CIDR}"
+        NO_SLEEP="#{cfg[:no_sleep] ? 1 : 0}"
+        PROVIDER="#{PROVIDER}"
+        # Only VMware needs guest tools for this lab to work. The host-only
+        # network, NFS and the SSH tunnel are all kernel/hypervisor features,
+        # so on other providers we skip the package rather than risk installing
+        # a Guest Additions build that will not compile.
+        GUEST_TOOLS="#{PROVIDER == 'vmware_desktop' ? (DESKTOP ? 'open-vm-tools-desktop' : 'open-vm-tools') : ''}"
+        TOTAL_STEPS=8
+
+        IS_PRIMARY=0
+        [ "$NODE_NAME" = "$PRIMARY_NAME" ] && IS_PRIMARY=1
+
+        # Helper to draw progress bar
+        draw_bar() {
+          local percent=$1
+          local width=20
+          local filled=$(( percent * width / 100 ))
+          local empty=$(( width - filled ))
+          local bar=""
+          for ((i=0; i<filled; i++)); do bar="${bar}█"; done
+          for ((i=0; i<empty; i++)); do bar="${bar}░"; done
+          echo "[${bar}] ${percent}%"
+        }
+
+        # Step Runner for APT commands
+        run_apt_step() {
+          local step_num=$1
+          local step_title=$2
+          shift 2
+
+          echo "=================================================================="
+          echo " STEP ${step_num}/${TOTAL_STEPS}: ${step_title}"
+          echo "=================================================================="
+
+          # The progress pipe below hides apt's own exit status, so a failed
+          # install used to "complete" and break things much later. Keep
+          # stderr in a log, check PIPESTATUS, and retry: the usual causes are
+          # a mirror hiccup or unattended-upgrades holding the dpkg lock at
+          # first boot, and both clear up on their own.
+          local apt_log rc attempt
+          apt_log="$(mktemp)"
+          for attempt in 1 2 3; do
+          local last_phase=""
+          local last_p=-1
+
+          apt-get "$@" -o APT::Status-Fd=1 -o DPkg::Lock::Timeout=300 2>"$apt_log" | while read -r line; do
+            if [[ "$line" =~ (pmstatus|dlstatus):[^:]*:([0-9]+(\.[0-9]+)?):(.*) ]]; then
+              local phase="${BASH_REMATCH[1]}"
+              local p_raw="${BASH_REMATCH[2]}"
+              local p=$(printf "%.0f" "$p_raw" 2>/dev/null || echo 0)
+              local activity="${BASH_REMATCH[4]}"
+
+              if [[ "$phase" != "$last_phase" ]]; then
+                last_phase="$phase"
+                last_p=-1
+              fi
+
+              if (( p >= last_p + 25 )); then
+                local bar=$(draw_bar "$p")
+                local label="[Download]"
+                [[ "$phase" == "pmstatus" ]] && label="[ Install ]"
+                echo "   ${bar} | ${label} ${activity}"
+                last_p=$p
+              fi
+            fi
+          done
+          rc=${PIPESTATUS[0]}
+          [ "$rc" -eq 0 ] && break
+          echo "   !! apt-get $* failed (exit $rc), attempt ${attempt}/3:"
+          tail -n 15 "$apt_log" | sed 's/^/      /'
+          if [ "$attempt" -eq 3 ]; then
+            rm -f "$apt_log"
+            echo "   !! giving up on step ${step_num}. Fix the error above, then: vagrant provision"
+            exit 1
+          fi
+          sleep 15
+          [ "$1" = "install" ] && apt-get update -qq >/dev/null 2>&1
+          done
+          rm -f "$apt_log"
+
+          echo "   $(draw_bar 100) | Step ${step_num} complete."
+          echo ""
+        }
+
+        # Step 1: Repositories
+        run_apt_step 1 "Updating package repositories" update -qq
+
+        # Step 2: Display Manager
+        if [ "$DESKTOP" = "1" ]; then
+          run_apt_step 2 "Installing GDM3 Display Manager" install -y -qq gdm3
+        else
+          echo " STEP 2/${TOTAL_STEPS}: display manager skipped (desktop: false)"
+        fi
+
+        # Step 3: Hypervisor integration & NFS Utilities
+        if [ -n "$GUEST_TOOLS" ]; then
+          run_apt_step 3 "Installing Guest Tools & NFS Utilities" install -y -qq "$GUEST_TOOLS" nfs-kernel-server nfs-common
+        else
+          run_apt_step 3 "Installing NFS Utilities (guest tools skipped on $PROVIDER)" install -y -qq nfs-kernel-server nfs-common
+        fi
+
+        # Step 4: Full Desktop GUI
+        if [ "$DESKTOP" = "1" ]; then
+          run_apt_step 4 "Installing Ubuntu Desktop GUI" install -y -qq ubuntu-desktop
+        else
+          echo " STEP 4/${TOTAL_STEPS}: desktop GUI skipped (desktop: false - headless server)"
+        fi
+
+        # Step 5: User Setup & Live Sync Directory
+        echo "=================================================================="
+        echo " STEP 5/${TOTAL_STEPS}: Configuring User Account ($NEW_USER) & Folders"
+        echo "=================================================================="
+        if ! id "$NEW_USER" &>/dev/null; then
+          useradd -m -s /bin/bash -G sudo "$NEW_USER"
+          echo "$NEW_USER:$NEW_PASS" | chpasswd
+        fi
+
+        # ---- data disk ------------------------------------------------------
+        # The second disk is exactly the size :disk asked for, and it is the
+        # only part of this machine whose size the user actually controls (the
+        # root disk is the box's own and cannot be made smaller). So it had
+        # better be real: find it, format it once, mount it, and make it
+        # survive a reboot. live_share then lives on it.
+        #
+        # Picking the wrong device here means wipefs on the root filesystem, so
+        # the selection is deliberately paranoid. It only ever considers whole
+        # disks (TYPE=disk), never partitions, and it rejects a disk if
+        # anything on it - the disk or any of its partitions - is mounted or
+        # carries a filesystem. Note that "lsblk -no FSTYPE /dev/sda" prints
+        # EMPTY on Ubuntu, because the filesystem belongs to /dev/sda2, not to
+        # /dev/sda; asking for the device and letting lsblk walk its children is
+        # what makes this correct. Matching the exact size Vagrant created is the
+        # final guard: if nothing matches, no disk is touched.
+        DATA_MNT="/srv/labdata"
+        DATA_DISK_MB=#{data_mb}
+        DATA_DEV=""
+        for d in $(lsblk -ndo NAME,TYPE 2>/dev/null | awk '$2=="disk"{print "/dev/"$1}'); do
+          in_use=0
+          lsblk -nro MOUNTPOINT "$d" 2>/dev/null | grep -q '[^[:space:]]' && in_use=1
+          lsblk -nro FSTYPE    "$d" 2>/dev/null | grep -q '[^[:space:]]' && in_use=1
+          [ "$in_use" = 1 ] && continue
+          d_mb=$(lsblk -bno SIZE "$d" 2>/dev/null | awk '{printf "%d", $1/1048576}')
+          [ "$d_mb" = "$DATA_DISK_MB" ] || continue
+          DATA_DEV="$d"; break
+        done
+
+        if [ -n "$DATA_DEV" ]; then
+          # LABEL=labdata is the marker for "already ours, do not reformat".
+          if [ "$(lsblk -no LABEL "$DATA_DEV" 2>/dev/null | tr -d ' ')" != "labdata" ]; then
+            wipefs -a "$DATA_DEV" >/dev/null 2>&1 || true
+            mkfs.ext4 -q -L labdata "$DATA_DEV"
+          fi
+          mkdir -p "$DATA_MNT"
+          # Order matters: the data disk must be in fstab before the bind below.
+          grep -q "labdata" /etc/fstab || \
+            echo "$DATA_DEV $DATA_MNT ext4 defaults,noatime 0 2" >> /etc/fstab
+          mountpoint -q "$DATA_MNT" || mount "$DATA_MNT" || true
+        fi
+
+        SHARED_DIR="/home/$NEW_USER/live_share"
+        mkdir -p "$SHARED_DIR"
+        # Keep the familiar path ~/live_share but put the bytes on the data disk.
+        if mountpoint -q "$DATA_MNT"; then
+          mkdir -p "$DATA_MNT/live_share"
+          mountpoint -q "$SHARED_DIR" || mount --bind "$DATA_MNT/live_share" "$SHARED_DIR" || true
+          grep -q "bind" /etc/fstab || \
+            echo "$DATA_MNT/live_share $SHARED_DIR none bind 0 0" >> /etc/fstab
+        fi
+
+        # Pin live_share directly to GNOME Files left sidebar
+        BOOKMARK_DIR="/home/$NEW_USER/.config/gtk-3.0"
+        mkdir -p "$BOOKMARK_DIR"
+        if ! grep -q "live_share" "$BOOKMARK_DIR/bookmarks" 2>/dev/null; then
+          echo "file://$SHARED_DIR live_share" >> "$BOOKMARK_DIR/bookmarks"
+        fi
+
+        chown -R $NEW_USER:$NEW_USER "/home/$NEW_USER/live_share" "/home/$NEW_USER/.config"
+        if mountpoint -q "$DATA_MNT"; then
+          echo "   $(draw_bar 100) | User created; ~/live_share on the data disk ($DATA_DEV, $(df -h --output=size "$DATA_MNT" 2>/dev/null | tail -1 | tr -d ' '))"
+        elif [ -n "$DATA_DEV" ]; then
+          echo "   $(draw_bar 100) | User created, ~/live_share initialized. WARNING: could not"
+          echo "                      mount $DATA_DEV on $DATA_MNT - live_share is on the root disk."
+        else
+          echo "   $(draw_bar 100) | User created, ~/live_share initialized. NOTE: no data disk was"
+          echo "                      attached to this VM, so live_share is on the root disk."
+        fi
+        echo ""
+
+        # Step 6: Inter-VM Live Tunnel Setup & Auto-Login
+        echo "=================================================================="
+        echo " STEP 6/${TOTAL_STEPS}: Configuring Live Sync Tunnel & Auto-Login"
+        echo "=================================================================="
+
+        # NFS: the primary exports ~/live_share, every peer mounts it.
+        # Hosts may be provisioned in parallel, so the mount is retried rather
+        # than attempted once - with 3+ nodes a single "mount -a" races.
+        if [ "$IS_PRIMARY" = "1" ]; then
+          if ! grep -q "$SHARED_DIR" /etc/exports; then
+            echo "$SHARED_DIR $EXPORT_CIDR(rw,sync,no_subtree_check,no_root_squash)" >> /etc/exports
+            exportfs -a
+            systemctl restart nfs-kernel-server
+          fi
+          echo "   $(draw_bar 100) | NFS export ready for $EXPORT_CIDR"
+        else
+          if ! grep -q "$PRIMARY_IP:$SHARED_DIR" /etc/fstab; then
+            echo "$PRIMARY_IP:$SHARED_DIR $SHARED_DIR nfs defaults,timeo=14,intr 0 0" >> /etc/fstab
+          fi
+          # Hosts provision in parallel, so a peer can reach this step minutes
+          # before the primary finishes installing the desktop and starts its
+          # NFS server. Retry generously rather than once, or the share silently
+          # fails on any build where the primary is slower than its peers.
+          MOUNTED=0
+          for i in $(seq 1 150); do
+            if mountpoint -q "$SHARED_DIR"; then MOUNTED=1; break; fi
+            mount "$SHARED_DIR" >/dev/null 2>&1 && { MOUNTED=1; break; }
+            sleep 2
+          done
+          if [ "$MOUNTED" = "1" ]; then
+            echo "   $(draw_bar 100) | live_share mounted from $PRIMARY_IP"
+          else
+            echo "   !! live_share NOT mounted from $PRIMARY_IP after 5 minutes."
+            echo "      The primary is probably still building. Fix with:"
+            echo "        vagrant provision $PRIMARY_NAME     # once it has finished"
+            echo "        sudo umount $SHARED_DIR; sudo mount $SHARED_DIR"
+          fi
+        fi
+
+        # Enable Automatic Login (desktop only - a server has no display manager)
+        if [ "$DESKTOP" = "1" ]; then
+          cat <<EOF > /etc/gdm3/custom.conf
+[daemon]
+AutomaticLoginEnable=True
+AutomaticLogin=$NEW_USER
+EOF
+          echo "   $(draw_bar 100) | Live tunnel active & Auto-login configured."
+        else
+          echo "   $(draw_bar 100) | Live share configured (no auto-login on a server)."
+        fi
+        echo ""
+
+        # Step 7: Power Policy - a lab desktop must never blank, lock or sleep
+        echo "=================================================================="
+        echo " STEP 7/${TOTAL_STEPS}: Power Policy (never sleep)"
+        echo "=================================================================="
+        if [ "$NO_SLEEP" = "1" ]; then
+          # systemd: ignore the lid and power key, never idle-suspend
+          install -d -m 755 /etc/systemd/logind.conf.d
+          printf '%s\n' \
+            '# Managed by VMs-Labs/Vagrantfile - lab VMs must never sleep' \
+            '[Login]' \
+            'HandleLidSwitch=ignore' \
+            'HandleLidSwitchExternalPower=ignore' \
+            'HandlePowerKey=ignore' \
+            'IdleAction=ignore' \
+            'IdleActionSec=0' > /etc/systemd/logind.conf.d/99-lab-never-sleep.conf
+          systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target >/dev/null 2>&1
+
+          # GNOME: no idle blanking, no screen lock, no inactivity suspend.
+          # Run inside a throwaway session bus so this works during provisioning,
+          # before the desktop has ever been logged into. dconf still writes to
+          # the user's real profile, so the settings apply at next login.
+          if [ "$DESKTOP" = "1" ]; then
+          RTMP="$(mktemp -d /run/nosleep.XXXXXX)"
+          chown "$NEW_USER:$NEW_USER" "$RTMP"
+          chmod 700 "$RTMP"
+          sudo -u "$NEW_USER" env XDG_RUNTIME_DIR="$RTMP" HOME="/home/$NEW_USER" \
+            dbus-run-session -- sh -c '
+              gsettings set org.gnome.desktop.session idle-delay 0
+              gsettings set org.gnome.desktop.screensaver idle-activation-enabled false
+              gsettings set org.gnome.desktop.screensaver lock-enabled false
+              gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type "nothing"
+              gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0
+              gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-type "nothing"
+              gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-timeout 0
+            ' >/dev/null 2>&1
+          rmdir "$RTMP" 2>/dev/null
+          fi
+          echo "   $(draw_bar 100) | sleep targets masked, idle blanking + screen lock disabled"
+        else
+          echo "   $(draw_bar 100) | power policy left at the GNOME/systemd default"
+        fi
+        echo ""
+
+        # Step 8: Launch Graphical Environment
+        echo "=================================================================="
+        echo " STEP 8/${TOTAL_STEPS}: Starting Graphical Desktop"
+        echo "=================================================================="
+        [ -n "$GUEST_TOOLS" ] && systemctl enable open-vm-tools > /dev/null 2>&1
+        if [ "$DESKTOP" = "1" ]; then
+          systemctl set-default graphical.target > /dev/null 2>&1
+          systemctl restart gdm3
+          echo "   $(draw_bar 100) | Graphical session initialized."
+        else
+          systemctl set-default multi-user.target > /dev/null 2>&1
+          echo "   $(draw_bar 100) | Headless server - console / SSH only."
+        fi
+        echo ""
+
+        echo "==> Deployment of $NODE_NAME is complete!"
+      SHELL
+
+      # =======================================================================
+      #  SSH tunnel lab
+      # =======================================================================
+      #  primary = sshd + probe web service on :WEB_PORT (host-only interface)
+      #  peer    = autossh/systemd local forward 127.0.0.1:tunnel_port ->
+      #            primary:WEB_PORT, scoped by PermitOpen to that one target
+      #  The two pages opened on each peer's desktop prove the tunnel by eye.
+
+      node.vm.provision "tunnel-key-private", type: "file",
+                        source: tunnel_key, destination: "/home/vagrant/tunnel_ed25519"
+
+      node.vm.provision "tunnel-key-public", type: "file",
+                        source: "#{tunnel_key}.pub", destination: "/home/vagrant/tunnel_ed25519.pub"
+
+      if DEMO
+        node.vm.provision "tunnel-web-app", type: "file",
+                          source: File.join(gen_dir, "tunnel-web.py"),
+                          destination: "/tmp/tunnel-web.py"
+
+        node.vm.provision "tunnel-web-unit", type: "file",
+                          source: File.join(gen_dir, "tunnel-web.service"),
+                          destination: "/tmp/tunnel-web.service"
+      end
+
+      node.vm.provision "tunnel-gui-launcher", type: "file",
+                        source: File.join(gen_dir, "tunnel-demo-open.sh"),
+                        destination: "/tmp/tunnel-demo-open.sh"
+
+      if cfg[:role] == :peer
+        node.vm.provision "tunnel-client-script", type: "file",
+                          source: File.join(gen_dir, "ssh-tunnel.sh"),
+                          destination: "/tmp/ssh-tunnel.sh"
+
+        node.vm.provision "tunnel-client-unit", type: "file",
+                          source: File.join(gen_dir, "ssh-tunnel-#{cfg[:name]}.service"),
+                          destination: "/tmp/ssh-tunnel.service"
+      end
+
+      # ---- orchestrator: keys, sshd, units, verification, GUI ---------------
+      node.vm.provision "ssh-tunnel", type: "shell", inline: <<-SHELL
+        export DEBIAN_FRONTEND=noninteractive
+
+        LAB_USER="#{NEW_USER}"
+        NODE_NAME="#{cfg[:name]}"
+        NODE_IP="#{cfg[:ip]}"
+        PRIMARY_NAME="#{PRIMARY[:name]}"
+        PRIMARY_IP="#{PRIMARY[:ip]}"
+        WEB_PORT="#{WEB_PORT}"
+        TUNNEL_TARGET_PORT="#{TUNNEL_TARGET_PORT}"
+        DEMO="#{DEMO ? 1 : 0}"
+        DESKTOP="#{DESKTOP ? 1 : 0}"
+        TUNNEL_PORT="#{cfg[:tunnel_port]}"
+        ROLE="#{cfg[:role]}"
+        TOTAL_STEPS=6
+
+        SSHDIR="/home/$LAB_USER/.ssh"
+        WEB_SCRIPT="/usr/local/bin/tunnel-web.py"
+        WEB_UNIT="/etc/systemd/system/tunnel-web.service"
+        TUN_SCRIPT="/usr/local/bin/ssh-tunnel.sh"
+        TUN_UNIT="/etc/systemd/system/ssh-tunnel.service"
+        OPEN_SCRIPT="/usr/local/bin/tunnel-demo-open.sh"
+
+        IS_PRIMARY=0
+        [ "$NODE_NAME" = "$PRIMARY_NAME" ] && IS_PRIMARY=1
+
+        hdr() {
+          echo "=================================================================="
+          echo " TUNNEL STEP ${1}/${TOTAL_STEPS} [${ROLE}]: ${2}"
+          echo "=================================================================="
+        }
+        bar() {
+          local filled=$(( $1 * 20 / 100 )) empty=$(( 20 - $1 * 20 / 100 )) s="" i
+          for ((i = 0; i < filled; i++)); do s="${s}█"; done
+          for ((i = 0; i < empty; i++)); do s="${s}░"; done
+          printf '%s' "$s"
+        }
+        done_bar() { echo "   [$(bar 100)] $1"; echo ""; }
+        fail() { echo "   !! $1"; echo ""; exit 1; }
+
+        # --- 1 -------------------------------------------------------------
+        hdr 1 "Installing SSH + tunnel tooling"
+        apt-get update -qq
+        apt-get install -y -qq openssh-server openssh-client autossh curl
+        command -v autossh >/dev/null 2>&1 || echo "   (autossh unavailable, using the plain ssh retry loop)"
+        done_bar "openssh-server / openssh-client / autossh / curl ready"
+
+        # --- 2 -------------------------------------------------------------
+        hdr 2 "Installing the shared tunnel key for $LAB_USER"
+        install -d -m 700 -o "$LAB_USER" -g "$LAB_USER" "$SSHDIR"
+        if [ -s /home/vagrant/tunnel_ed25519 ]; then
+          install -m 600 -o "$LAB_USER" -g "$LAB_USER" \
+            /home/vagrant/tunnel_ed25519 "$SSHDIR/tunnel_ed25519"
+        fi
+        if [ "$IS_PRIMARY" = "1" ] && [ -s /home/vagrant/tunnel_ed25519.pub ]; then
+          touch "$SSHDIR/authorized_keys"
+          chown "$LAB_USER:$LAB_USER" "$SSHDIR/authorized_keys"
+          chmod 600 "$SSHDIR/authorized_keys"
+          grep -qFf /home/vagrant/tunnel_ed25519.pub "$SSHDIR/authorized_keys" \
+            || cat /home/vagrant/tunnel_ed25519.pub >> "$SSHDIR/authorized_keys"
+        fi
+        rm -f /home/vagrant/tunnel_ed25519 /home/vagrant/tunnel_ed25519.pub
+        [ -s "$SSHDIR/tunnel_ed25519" ] || fail "no private key at $SSHDIR/tunnel_ed25519 (run the tunnel-key-* provisioners too)"
+        FPR="$(ssh-keygen -lf "$SSHDIR/tunnel_ed25519" | awk '{print $2}')"
+        if [ "$IS_PRIMARY" = "1" ]; then
+          done_bar "private key in place, public key authorised ($FPR)"
+        else
+          done_bar "private key in place for outbound SSH to $PRIMARY_IP ($FPR)"
+        fi
+
+        # --- 3 -------------------------------------------------------------
+        hdr 3 "Installing tunnel scripts and units"
+        [ -s /tmp/tunnel-demo-open.sh ] || fail "missing staged file /tmp/tunnel-demo-open.sh"
+        install -m 755 /tmp/tunnel-demo-open.sh "$OPEN_SCRIPT"
+        if [ "$IS_PRIMARY" = "1" ] && [ "$DEMO" = "1" ]; then
+          [ -s /tmp/tunnel-web.py ]      || fail "missing staged file /tmp/tunnel-web.py"
+          [ -s /tmp/tunnel-web.service ] || fail "missing staged file /tmp/tunnel-web.service"
+          install -m 755 /tmp/tunnel-web.py      "$WEB_SCRIPT"
+          install -m 644 /tmp/tunnel-web.service "$WEB_UNIT"
+        fi
+        if [ "$IS_PRIMARY" = "0" ]; then
+          [ -s /tmp/ssh-tunnel.sh ]       || fail "missing staged file /tmp/ssh-tunnel.sh"
+          [ -s /tmp/ssh-tunnel.service ]  || fail "missing staged file /tmp/ssh-tunnel.service"
+          install -m 755 /tmp/ssh-tunnel.sh     "$TUN_SCRIPT"
+          install -m 644 /tmp/ssh-tunnel.service "$TUN_UNIT"
+        fi
+        done_bar "scripts + systemd units installed for role $ROLE"
+
+        # --- 4 -------------------------------------------------------------
+        hdr 4 "Hardening sshd (key-only, -L forwards only, lab users only)"
+        install -d -m 755 /etc/ssh/sshd_config.d
+        # sshd applies the FIRST value it sees per keyword, and
+        # /etc/ssh/sshd_config.d/*.conf is Include-d at the top of sshd_config,
+        # so this drop-in wins over the shipped defaults. "local" allows -L
+        # forwards only: no -R reverse tunnels, no -W streams.
+        printf '%s\n' \
+          '# Managed by VMs-Labs/Vagrantfile - inter-node SSH tunnel (hardened)' \
+          '# key authentication only, enforced regardless of PasswordAuthentication' \
+          'AuthenticationMethods publickey' \
+          'PubkeyAuthentication yes' \
+          'PasswordAuthentication no' \
+          'KbdInteractiveAuthentication no' \
+          'PermitEmptyPasswords no' \
+          '# only the lab user (and vagrant, which Vagrant itself logs in as)' \
+          "AllowUsers $LAB_USER vagrant" \
+          '# -L forwards only, and only to the single service the tunnel targets' \
+          'AllowTcpForwarding local' \
+          "PermitOpen $PRIMARY_IP:$TUNNEL_TARGET_PORT" \
+          'GatewayPorts no' \
+          'X11Forwarding no' \
+          'PermitTunnel no' \
+          'MaxAuthTries 3' \
+          'MaxSessions 5' \
+          'LoginGraceTime 30' \
+          'ClientAliveInterval 30' \
+          'ClientAliveCountMax 4' > /etc/ssh/sshd_config.d/20-tunnel-lab.conf
+        # ssh.service creates this at boot, but a bare "sshd -t" needs it too
+        install -d -m 0755 /run/sshd
+        sshd -t || fail "sshd rejected /etc/ssh/sshd_config.d/20-tunnel-lab.conf (sshd left untouched)"
+        systemctl enable ssh >/dev/null 2>&1
+        systemctl restart ssh
+        sleep 2
+        ss -ltn | grep -q ':22 ' || fail "sshd is not listening on port 22"
+        done_bar "sshd publickey only, AllowUsers $LAB_USER+vagrant, -L to $PRIMARY_IP:$TUNNEL_TARGET_PORT only"
+
+        # --- 5 -------------------------------------------------------------
+        hdr 5 "Starting services and verifying end to end"
+        systemctl daemon-reload
+        if [ "$IS_PRIMARY" = "1" ] && [ "$DEMO" = "0" ]; then
+          echo "   [$(bar 100)] no services to start on the primary (DEMO=false)"
+          echo ""
+        elif [ "$IS_PRIMARY" = "1" ]; then
+          # "enable --now" does NOT re-read a changed unit file, so an already
+          # running service would keep its old (possibly wider) bind address.
+          systemctl enable tunnel-web.service >/dev/null 2>&1
+          systemctl restart tunnel-web.service
+          HEALTH=""
+          for i in $(seq 1 25); do
+            HEALTH="$(curl -fsS --max-time 3 "http://$PRIMARY_IP:$WEB_PORT/health" 2>/dev/null)"
+            [ -n "$HEALTH" ] && break
+            sleep 1
+          done
+          [ -n "$HEALTH" ] || { journalctl -u tunnel-web.service -n 15 --no-pager | sed 's/^/   /'; fail "no answer on $PRIMARY_IP:$WEB_PORT"; }
+          # assert it is NOT published on every interface
+          ss -ltn | grep -q "0.0.0.0:$WEB_PORT" && fail "probe service is bound to 0.0.0.0 - reachable from the NAT network"
+          ss -ltn | grep -q "$PRIMARY_IP:$WEB_PORT" || fail "probe service is not bound to $PRIMARY_IP"
+          echo "$HEALTH" | sed 's/^/   /'
+          done_bar "tunnel-web.service bound to $PRIMARY_IP:$WEB_PORT only (not 0.0.0.0)"
+        elif [ "$DEMO" = "1" ]; then
+          # same reason: the forward target lives in the unit-installed script,
+          # so an already-running tunnel must be restarted to pick up changes
+          systemctl enable ssh-tunnel.service >/dev/null 2>&1
+          systemctl restart ssh-tunnel.service
+          HEALTH=""
+          for i in $(seq 1 40); do
+            HEALTH="$(curl -fsS --max-time 4 "http://127.0.0.1:$TUNNEL_PORT/health" 2>/dev/null)"
+            [ -n "$HEALTH" ] && break
+            sleep 2
+          done
+          if [ -z "$HEALTH" ]; then
+            systemctl status ssh-tunnel.service --no-pager -l | tail -n 15 | sed 's/^/   /'
+            journalctl -u ssh-tunnel.service -n 20 --no-pager | sed 's/^/   /'
+            fail "nothing answered on 127.0.0.1:$TUNNEL_PORT"
+          fi
+          echo "$HEALTH" | sed 's/^/   /'
+          done_bar "127.0.0.1:$TUNNEL_PORT (here) == ssh -L ==> $PRIMARY_IP:$WEB_PORT"
+        else
+          # DEMO=false: there is no /health endpoint to ask, so verify the thing
+          # we actually own - that the local forward is established - and report
+          # the far end informationally.
+          systemctl enable ssh-tunnel.service >/dev/null 2>&1
+          systemctl restart ssh-tunnel.service
+          LISTENING=0
+          for i in $(seq 1 40); do
+            if ss -ltn | grep -q "127.0.0.1:$TUNNEL_PORT "; then LISTENING=1; break; fi
+            sleep 2
+          done
+          if [ "$LISTENING" != "1" ]; then
+            systemctl status ssh-tunnel.service --no-pager -l | tail -n 15 | sed 's/^/   /'
+            journalctl -u ssh-tunnel.service -n 20 --no-pager | sed 's/^/   /'
+            fail "the forward never appeared on 127.0.0.1:$TUNNEL_PORT"
+          fi
+          if curl -fsS --max-time 5 "http://127.0.0.1:$TUNNEL_PORT/" >/dev/null 2>&1; then
+            done_bar "forward up on 127.0.0.1:$TUNNEL_PORT ==> $PRIMARY_IP:$TUNNEL_TARGET_PORT, and the far end answered"
+          else
+            done_bar "forward up on 127.0.0.1:$TUNNEL_PORT ==> $PRIMARY_IP:$TUNNEL_TARGET_PORT (nothing answering on the far end yet - expected with DEMO=false)"
+          fi
+        fi
+
+        # --- 6 -------------------------------------------------------------
+        hdr 6 "Opening the live test in the graphical desktop"
+        DESK="/home/$LAB_USER/Desktop"
+        if [ "$DESKTOP" = "0" ]; then
+          echo "   [$(bar 100)] skipped - headless server, no browser to open"
+          if [ "$DEMO" = "1" ] && [ "$IS_PRIMARY" = "0" ]; then
+            echo "                check it from a shell:  curl http://127.0.0.1:$TUNNEL_PORT/health"
+          fi
+          echo ""
+        elif [ "$DEMO" = "0" ]; then
+          mkdir -p "$DESK"
+          chown "$LAB_USER:$LAB_USER" "$DESK"
+          # remove only the two shortcuts this script itself created
+          rm -f "$DESK/tunnel-direct.desktop" "$DESK/tunnel-via-ssh.desktop"
+          echo "   [$(bar 100)] skipped - DEMO=false, so no browsers are opened"
+          echo ""
+        else
+        mkdir -p "$DESK"
+        chown "$LAB_USER:$LAB_USER" "$DESK"
+        shortcut() {
+          printf '%s\n' '[Desktop Entry]' 'Type=Application' "Name=$1" \
+            'Comment=SSH tunnel lab' "Exec=firefox --new-window $2" 'Icon=network-workgroup' \
+            'Terminal=false' 'Categories=Network;WebBrowser;' > "$DESK/$3.desktop"
+          chown "$LAB_USER:$LAB_USER" "$DESK/$3.desktop"
+          chmod 755 "$DESK/$3.desktop"
+        }
+        GUI_OK=1
+        if [ "$IS_PRIMARY" = "1" ]; then
+          shortcut "Tunnel lab - direct" "http://$PRIMARY_IP:$WEB_PORT/" "tunnel-direct"
+          "$OPEN_SCRIPT" "http://$PRIMARY_IP:$WEB_PORT/" "$LAB_USER" || GUI_OK=0
+        else
+          shortcut "Tunnel lab - via SSH tunnel" "http://127.0.0.1:$TUNNEL_PORT/" "tunnel-via-ssh"
+          shortcut "Tunnel lab - direct (no tunnel)" "http://$PRIMARY_IP:$WEB_PORT/" "tunnel-direct"
+          "$OPEN_SCRIPT" "http://$PRIMARY_IP:$WEB_PORT/" "$LAB_USER" || GUI_OK=0
+          sleep 8
+          "$OPEN_SCRIPT" "http://127.0.0.1:$TUNNEL_PORT/" "$LAB_USER" || GUI_OK=0
+        fi
+        if [ "$GUI_OK" = "1" ]; then
+          done_bar "Firefox opened in the $LAB_USER desktop + desktop shortcuts created"
+        else
+          echo "   [$(bar 0)] desktop session not reachable - nothing was auto-opened."
+          echo "                The shortcuts are on the $LAB_USER desktop; to open manually run:"
+          echo "                  sudo $OPEN_SCRIPT <url> $LAB_USER"
+          echo ""
+        fi
+        fi
+
+        echo "=================================================================="
+        echo " NODE $NODE_NAME ($NODE_IP) READY  [role: $ROLE]"
+        echo "=================================================================="
+        if [ "$IS_PRIMARY" = "1" ]; then
+          echo "  role         : primary - NFS export, sshd target"
+          if [ "$DEMO" = "1" ]; then
+            echo "  probe service: http://$PRIMARY_IP:$WEB_PORT/  (host-only interface only)"
+          fi
+        else
+          echo "  role         : peer - NFS client, SSH tunnel client"
+          echo "  VIA TUNNEL   : 127.0.0.1:$TUNNEL_PORT  ->  $PRIMARY_IP:$TUNNEL_TARGET_PORT"
+          if [ "$DEMO" = "1" ]; then
+            echo "  direct       : http://$PRIMARY_IP:$WEB_PORT/   (no tunnel, for comparison)"
+          fi
+          echo "  unit         : systemctl status ssh-tunnel   (autossh, auto-reconnects)"
+        fi
+        echo "  live_share   : $(mountpoint -q /home/$LAB_USER/live_share && echo "mounted from $PRIMARY_IP" || echo "not mounted")"
+        echo ""
+      SHELL
+    end
+  end
+end

@@ -1,0 +1,5 @@
+# Vagrant state - .vagrant/keys/tunnel_ed25519 is a PRIVATE KEY
+.vagrant/
+# your config holds the VM password; only lab.yml.example is published
+lab.yml
+*.log
