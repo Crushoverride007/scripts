@@ -1,15 +1,15 @@
 # =============================================================================
-#  install_vm.ps1 - Windows one-liner launcher for install_vm.sh
+#  install_lab.ps1 - Windows one-liner launcher for install_lab.sh
 #
 #  From ANY Windows shell (cmd, PowerShell 5 or 7, Windows Terminal):
-#    powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_vm.ps1 | iex"
+#    powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/install_lab.ps1 | iex"
 #
 #  With flags (the same line works in cmd and PowerShell):
-#    powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_vm.ps1))) --server --name web1"
+#    powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/install_lab.ps1))) -y --up"
 #
 #  If Git for Windows is missing it offers to install it with winget.
 #
-#  From a clone:   .\install_vm.ps1 --server
+#  From a clone:   .\install_lab.ps1 --count 3
 #
 #  Why this exists: in PowerShell "curl" is an alias for Invoke-WebRequest and
 #  "bash" is the WSL launcher, so "curl ... | bash" does not work. This finds
@@ -65,7 +65,7 @@ function Invoke-LabScript {
     $script = $local
   } else {
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-    $url = "https://raw.githubusercontent.com/$repo/$ref/vm-lab/$Name"
+    $url = "https://raw.githubusercontent.com/$repo/$ref/vagrant/$Name"
     try {
       $body = (Invoke-WebRequest -UseBasicParsing -Uri $url).Content
     } catch {
@@ -90,9 +90,9 @@ function Invoke-LabScript {
 }
 
 # "irm | iex" cannot pass arguments, so LAB_ARGS can carry them instead:
-#   $env:LAB_ARGS='--server --name web1'; irm .../install_vm.ps1 | iex
+#   $env:LAB_ARGS='-y --up'; irm .../install_lab.ps1 | iex
 $labArgs = @($args)
 if ($labArgs.Count -eq 0 -and $env:LAB_ARGS) {
   $labArgs = @($env:LAB_ARGS -split '\s+' | Where-Object { $_ })
 }
-Invoke-LabScript -Name 'install_vm.sh' -Arguments $labArgs
+Invoke-LabScript -Name 'install_lab.sh' -Arguments $labArgs

@@ -4,7 +4,7 @@ My one-command installers and dotfiles.
 
 ```
 install/     system installers   (docker, python, terraform, user setup)
-vm-lab/      Vagrant VMs         (setup, multi-VM lab, single VM)
+vagrant/     Vagrant VMs         (setup, multi-VM lab, single VM)
 alacritty/ coc/ fish/ git/ karabiner/ neofetch/ nvim/ zed/
 visual_studio_code-settings/ shallow-backup.conf    dotfiles
 ```
@@ -22,12 +22,12 @@ curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/insta
 
 On macOS, run `install_python.sh` without `sudo`, because Homebrew refuses to run as root.
 
-## vm-lab/
+## vagrant/
 
-Ubuntu 24.04 VMs with Vagrant. Run these as **your normal user, not with sudo**; see [vm-lab/README.md](vm-lab/README.md) for details.
+Ubuntu 24.04 VMs with Vagrant. Run these as **your normal user, not with sudo**; see [vagrant/README.md](vagrant/README.md) for details.
 
 | Step | macOS / Linux | Windows (cmd or PowerShell) |
 |---|---|---|
-| **Set up a machine** (once) | `curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/setup_vagrant.sh \| bash` | `powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/setup_vagrant.ps1 \| iex"` |
-| **Build a lab** | `curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_lab.sh \| bash` | `powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_lab.ps1 \| iex"` |
-| **Build one VM** | `curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_vm.sh \| bash -s -- --server` | `powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_vm.ps1))) --server"` |
+| **Set up a machine** (once) | `curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/setup_vagrant.sh \| bash` | `powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/setup_vagrant.ps1 \| iex"` |
+| **Build a lab** | `curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/install_lab.sh \| bash` | `powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/install_lab.ps1 \| iex"` |
+| **Build one VM** | `curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/install_vm.sh \| bash -s -- --server` | `powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/install_vm.ps1))) --server"` |

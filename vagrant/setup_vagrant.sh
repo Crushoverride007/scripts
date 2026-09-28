@@ -3,8 +3,8 @@
 #  setup_vagrant.sh  --  install Vagrant + a hypervisor setup, macOS and Linux
 #
 #  USAGE (run as your normal user - it asks for sudo only where it must)
-#    curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/setup_vagrant.sh | bash
-#    curl -fsSL .../vm-lab/setup_vagrant.sh | bash -s -- --provider libvirt -y
+#    curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/setup_vagrant.sh | bash
+#    curl -fsSL .../vagrant/setup_vagrant.sh | bash -s -- --provider libvirt -y
 #
 #  Windows: use setup_vagrant.ps1 instead.
 #
@@ -48,8 +48,8 @@ usage() {
 setup_vagrant.sh - install Vagrant and a hypervisor setup (macOS, Linux).
 
 USAGE (as your normal user - not with sudo)
-  curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/setup_vagrant.sh | bash
-  curl -fsSL .../vm-lab/setup_vagrant.sh | bash -s -- --provider libvirt -y
+  curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/setup_vagrant.sh | bash
+  curl -fsSL .../vagrant/setup_vagrant.sh | bash -s -- --provider libvirt -y
 
 Installs what is missing, asking before each install: Vagrant, the provider's
 plugin, and libvirt/KVM, VirtualBox or the Vagrant VMware Utility as needed.
@@ -335,7 +335,7 @@ cat <<EOF
 
 ${G}Done.${N} Build a lab with:
 
-  curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_lab.sh | bash -s -- --provider $PROVIDER
+  curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/install_lab.sh | bash -s -- --provider $PROVIDER
 
 EOF
 }

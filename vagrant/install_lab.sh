@@ -3,12 +3,12 @@
 #  install_lab.sh  --  create a multi-VM lab with one command
 #
 #  USAGE (run as your normal user - NOT with sudo)
-#    curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_lab.sh | bash
-#    curl -fsSL .../vm-lab/install_lab.sh | bash -s -- -y --count 3 --up     # fully unattended
+#    curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/install_lab.sh | bash
+#    curl -fsSL .../vagrant/install_lab.sh | bash -s -- -y --count 3 --up     # fully unattended
 #    bash install_lab.sh
 #
 #  Windows PowerShell:
-#    powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_lab.ps1 | iex"
+#    powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/install_lab.ps1 | iex"
 #
 #  It checks your platform and prerequisites, downloads the Vagrant project,
 #  asks about each VM in turn, warns if the total will not fit on this PC,
@@ -44,7 +44,7 @@
 #  ENVIRONMENT
 #    LAB_REPO          owner/repo to download from  (default: Crushoverride007/scripts)
 #    LAB_REF           branch, tag or commit        (default: main)
-#    LAB_PATH          folder in the repo           (default: vm-lab/lab)
+#    LAB_PATH          folder in the repo           (default: vagrant/lab)
 #    LAB_RAW_BASE      full URL, overrides all three
 # =============================================================================
 
@@ -56,7 +56,7 @@ set -euo pipefail
 
 LAB_REPO="${LAB_REPO:-Crushoverride007/scripts}"
 LAB_REF="${LAB_REF:-main}"
-LAB_PATH="${LAB_PATH-vm-lab/lab}"
+LAB_PATH="${LAB_PATH-vagrant/lab}"
 RAW_BASE="${LAB_RAW_BASE:-https://raw.githubusercontent.com/${LAB_REPO}/${LAB_REF}${LAB_PATH:+/$LAB_PATH}}"
 
 D_DIR="./vms-lab"
@@ -99,12 +99,12 @@ usage() {
 install_lab.sh - create a multi-VM lab with one command.
 
 USAGE (as your normal user - not with sudo)
-  curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_lab.sh | bash
-  curl -fsSL .../vm-lab/install_lab.sh | bash -s -- -y --count 3 --up
+  curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/install_lab.sh | bash
+  curl -fsSL .../vagrant/install_lab.sh | bash -s -- -y --count 3 --up
   bash install_lab.sh
 
   Windows PowerShell:
-  powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_lab.ps1 | iex"
+  powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/install_lab.ps1 | iex"
 
 It checks your platform and prerequisites, downloads the Vagrant project, asks
 about each VM in turn, warns if the total will not fit on this PC, writes
@@ -137,7 +137,7 @@ ENVIRONMENT
   LAB_REPO          owner/repo to download from (default: Crushoverride007/scripts)
   LAB_REF           branch, tag or commit       (default: main) - pin a tag for
                     reproducible builds
-  LAB_PATH          folder inside the repo      (default: vm-lab/lab)
+  LAB_PATH          folder inside the repo      (default: vagrant/lab)
   LAB_RAW_BASE      full URL, overrides the three above (mirrors, testing)
 EOF
   exit 0
@@ -804,7 +804,7 @@ fi
 # ---- download ---------------------------------------------------------------
 # --local: copy the project from disk instead of fetching it, so the lab can be
 # tried before it is published. Looks next to this script first (a clone of the
-# repo: vm-lab/install_lab.sh + vm-lab/lab/), then in the current folder.
+# repo: vagrant/install_lab.sh + vagrant/lab/), then in the current folder.
 SRC_DIR=""
 if [ "$D_LOCAL" -eq 1 ]; then
   SCRIPT_DIR=""
@@ -844,7 +844,7 @@ fetch() { # required file
   else
     printf '\n  %sx%s could not get %s\n      from %s\n\n' "$R" "$N" "$1" "${SRC_DIR:-$RAW_BASE}" >&2
     printf '  Check that the file is published there, or point somewhere else:\n' >&2
-    printf '      LAB_REPO=owner/repo  LAB_REF=main  LAB_PATH=vm-lab/lab\n' >&2
+    printf '      LAB_REPO=owner/repo  LAB_REF=main  LAB_PATH=vagrant/lab\n' >&2
     printf '      LAB_RAW_BASE=https://example.com/path/to/project\n' >&2
     printf '  or try a local clone:   bash install_lab.sh --local\n\n' >&2
     exit 1

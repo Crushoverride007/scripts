@@ -2,10 +2,10 @@
 #  setup_vagrant.ps1 - install Vagrant + a hypervisor setup on Windows
 #
 #  From any Windows shell (cmd, PowerShell 5 or 7), as your NORMAL user:
-#    powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/setup_vagrant.ps1 | iex"
+#    powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/setup_vagrant.ps1 | iex"
 #
 #  With flags:
-#    powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/setup_vagrant.ps1))) --provider virtualbox -y"
+#    powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/setup_vagrant.ps1))) --provider virtualbox -y"
 #
 #  Installs what is missing, asking before each install:
 #    - Git for Windows       (winget)  - the lab scripts run in its bash
@@ -158,7 +158,7 @@ function Invoke-SetupVagrant {
   Write-Host 'Done.' -ForegroundColor Green
   if ($needReboot) { Warn 'Vagrant was just installed: restart Windows before using it.' }
   Write-Host '  Build a lab with:'
-  Write-Host "  powershell -ExecutionPolicy Bypass -c `"irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_lab.ps1 | iex`""
+  Write-Host "  powershell -ExecutionPolicy Bypass -c `"irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/install_lab.ps1 | iex`""
   Write-Host ''
   # No "exit": under "irm | iex" it would close the user's PowerShell window.
 }

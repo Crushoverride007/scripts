@@ -16,11 +16,11 @@ Run these as **your normal user, not with `sudo`**. Vagrant stores boxes, plugin
 Installs whatever is missing and asks before each install: Vagrant, the provider's plugin, and libvirt/KVM, VirtualBox or the Vagrant VMware Utility.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/setup_vagrant.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/setup_vagrant.sh | bash
 ```
 
 ```powershell
-powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/setup_vagrant.ps1 | iex"
+powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/setup_vagrant.ps1 | iex"
 ```
 
 The first command is for macOS and Linux; the second is for Windows, where it also installs Git for Windows.
@@ -59,25 +59,25 @@ Every VM gets a host-only IP, a data disk at `/srv/labdata`, an NFS share (`~/li
 **Linux / macOS / WSL / Git Bash**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_lab.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/install_lab.sh | bash
 ```
 
 Unattended, with 3 headless servers:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_lab.sh | bash -s -- -y --count 3 --flavour server --up
+curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/install_lab.sh | bash -s -- -y --count 3 --flavour server --up
 ```
 
 **Windows** (works in cmd, PowerShell 5 or 7, and Windows Terminal)
 
 ```powershell
-powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_lab.ps1 | iex"
+powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/install_lab.ps1 | iex"
 ```
 
 With flags, add them at the end, inside the quotes:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_lab.ps1))) -y --count 3 --flavour server --up"
+powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/install_lab.ps1))) -y --count 3 --flavour server --up"
 ```
 
 If Git for Windows is missing, the script offers to install it with winget.
@@ -89,12 +89,12 @@ The login created on every VM gets a **random password** unless you pass `--pass
 ## Or: build one VM
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_vm.sh | bash -s -- --server --name web1 --ram 2
-curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_vm.sh | bash -s -- --desktop
+curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/install_vm.sh | bash -s -- --server --name web1 --ram 2
+curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/install_vm.sh | bash -s -- --desktop
 ```
 
 ```powershell
-powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_vm.ps1))) --server --name web1"
+powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vagrant/install_vm.ps1))) --server --name web1"
 ```
 
 `--server` is the stock box with nothing added. `--desktop` adds the Ubuntu desktop packages and nothing else. You log in as `vagrant` / `vagrant`.
@@ -104,7 +104,7 @@ powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw
 By default the scripts download from `main`. To make builds reproducible, pin a tag or commit:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/v1.0/vm-lab/install_lab.sh | LAB_REF=v1.0 bash
+curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/v1.0/vagrant/install_lab.sh | LAB_REF=v1.0 bash
 ```
 
 `LAB_REPO`, `LAB_REF`, `LAB_PATH` and `LAB_RAW_BASE` choose where the project files come from.
