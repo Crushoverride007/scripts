@@ -4,6 +4,31 @@ One command to build Ubuntu 24.04 VMs with Vagrant: a whole networked lab, or a 
 
 Run these as **your normal user, not with `sudo`**. Vagrant stores boxes, plugins and the VMware licence per user, so running it as root leaves VMs your own account can't manage.
 
+| Script | What it does |
+|---|---|
+| `setup_vagrant.sh` / `.ps1` | Installs Vagrant, the provider plugin and (where possible) the hypervisor |
+| `install_lab.sh` / `.ps1` | Builds a multi-VM lab |
+| `install_vm.sh` / `.ps1` | Builds one clean VM |
+| `lab/` | The lab's Vagrantfile, downloaded by `install_lab` |
+
+## 1. Set up a new machine (once)
+
+Installs whatever is missing and asks before each install: Vagrant, the provider's plugin, and libvirt/KVM, VirtualBox or the Vagrant VMware Utility.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/setup_vagrant.sh | bash
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/setup_vagrant.ps1 | iex"
+```
+
+The first command is for macOS and Linux; the second is for Windows, where it also installs Git for Windows.
+
+- **Provider choice:** it picks what's installed. Without one, it uses libvirt on Linux and VirtualBox on macOS and Windows. Pass `--provider NAME` to choose.
+- **VMware and Parallels:** it can't install these, because both need an account login and a licence. VMware is free for personal use: install it by hand, then run this script.
+- **Windows restart:** if Vagrant was just installed, restart before building.
+
 ## Requirements
 
 - [Vagrant](https://developer.hashicorp.com/vagrant/install)
@@ -27,32 +52,32 @@ Run these as **your normal user, not with `sudo`**. Vagrant stores boxes, plugin
   ```
 - Windows only: [Git for Windows](https://git-scm.com/download/win), which provides the bash the scripts run in. The Windows command offers to install it for you.
 
-## A multi-VM lab
+## 2. Build a multi-VM lab
 
 Every VM gets a host-only IP, a data disk at `/srv/labdata`, an NFS share (`~/live_share`) from the primary, and a self-healing SSH tunnel to the primary.
 
 **Linux / macOS / WSL / Git Bash**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_lab.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_lab.sh | bash
 ```
 
 Unattended, with 3 headless servers:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_lab.sh | bash -s -- -y --count 3 --flavour server --up
+curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_lab.sh | bash -s -- -y --count 3 --flavour server --up
 ```
 
 **Windows** (works in cmd, PowerShell 5 or 7, and Windows Terminal)
 
 ```powershell
-powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_lab.ps1 | iex"
+powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_lab.ps1 | iex"
 ```
 
 With flags, add them at the end, inside the quotes:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_lab.ps1))) -y --count 3 --flavour server --up"
+powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_lab.ps1))) -y --count 3 --flavour server --up"
 ```
 
 If Git for Windows is missing, the script offers to install it with winget.
@@ -61,15 +86,15 @@ The script asks about each VM, warns if the total won't fit on your PC, writes `
 
 The login created on every VM gets a **random password** unless you pass `--password`. It is printed at the end and saved in `lab.yml`.
 
-## One VM
+## Or: build one VM
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_vm.sh | bash -s -- --server --name web1 --ram 2
-curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_vm.sh | bash -s -- --desktop
+curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_vm.sh | bash -s -- --server --name web1 --ram 2
+curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_vm.sh | bash -s -- --desktop
 ```
 
 ```powershell
-powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_vm.ps1))) --server --name web1"
+powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_vm.ps1))) --server --name web1"
 ```
 
 `--server` is the stock box with nothing added. `--desktop` adds the Ubuntu desktop packages and nothing else. You log in as `vagrant` / `vagrant`.
@@ -79,7 +104,7 @@ powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw
 By default the scripts download from `main`. To make builds reproducible, pin a tag or commit:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/v1.0/install_lab.sh | LAB_REF=v1.0 bash
+curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/v1.0/vm-lab/install_lab.sh | LAB_REF=v1.0 bash
 ```
 
 `LAB_REPO`, `LAB_REF`, `LAB_PATH` and `LAB_RAW_BASE` choose where the project files come from.

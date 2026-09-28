@@ -2,7 +2,7 @@
 # left alone. The Vagrantfile refuses to run with CRLF, and a .sh with CRLF
 # breaks "curl ... | bash" - so they are always stored and served as LF.
 *.sh              text eol=lf
-vms-lab/**        text eol=lf
+vm-lab/**         text eol=lf
 # cmd.exe needs CRLF
 *.cmd             text eol=crlf
 *.ps1             text eol=crlf

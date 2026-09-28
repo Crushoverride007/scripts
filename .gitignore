@@ -6,4 +6,4 @@
 
 # Vagrant state (holds a private key) and local lab configs (hold passwords)
 .vagrant/
-vms-lab/lab.yml
+vm-lab/lab/lab.yml

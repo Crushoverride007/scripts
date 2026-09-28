@@ -2,10 +2,10 @@
 #  install_vm.ps1 - Windows one-liner launcher for install_vm.sh
 #
 #  From ANY Windows shell (cmd, PowerShell 5 or 7, Windows Terminal):
-#    powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_vm.ps1 | iex"
+#    powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_vm.ps1 | iex"
 #
 #  With flags (the same line works in cmd and PowerShell):
-#    powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_vm.ps1))) --server --name web1"
+#    powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_vm.ps1))) --server --name web1"
 #
 #  If Git for Windows is missing it offers to install it with winget.
 #
@@ -65,7 +65,7 @@ function Invoke-LabScript {
     $script = $local
   } else {
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-    $url = "https://raw.githubusercontent.com/$repo/$ref/$Name"
+    $url = "https://raw.githubusercontent.com/$repo/$ref/vm-lab/$Name"
     try {
       $body = (Invoke-WebRequest -UseBasicParsing -Uri $url).Content
     } catch {

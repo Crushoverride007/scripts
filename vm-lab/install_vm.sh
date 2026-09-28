@@ -3,12 +3,12 @@
 #  install_vm.sh  --  one clean Ubuntu 24.04 VM
 #
 #  USAGE (run as your normal user - NOT with sudo)
-#    curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_vm.sh | bash -s -- --desktop
-#    curl -fsSL .../install_vm.sh | bash -s -- --server --name web1 --ram 2
+#    curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_vm.sh | bash -s -- --desktop
+#    curl -fsSL .../vm-lab/install_vm.sh | bash -s -- --server --name web1 --ram 2
 #    bash install_vm.sh --server
 #
 #  Windows PowerShell:
-#    powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_vm.ps1))) --server"
+#    powershell -ExecutionPolicy Bypass -c "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_vm.ps1))) --server"
 #
 #  It writes a small Vagrantfile into ./NAME and boots it. --server is a stock
 #  box with nothing added. --desktop adds the Ubuntu desktop packages and
@@ -71,8 +71,8 @@ usage() {
 install_vm.sh - one clean Ubuntu 24.04 VM.
 
 USAGE (as your normal user - not with sudo)
-  curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/install_vm.sh | bash -s -- --desktop
-  curl -fsSL .../install_vm.sh | bash -s -- --server --name web1 --ram 2
+  curl -fsSL https://raw.githubusercontent.com/Crushoverride007/scripts/main/vm-lab/install_vm.sh | bash -s -- --desktop
+  curl -fsSL .../vm-lab/install_vm.sh | bash -s -- --server --name web1 --ram 2
   bash install_vm.sh --server
 
 --server is a stock box with nothing added. --desktop adds the Ubuntu desktop
