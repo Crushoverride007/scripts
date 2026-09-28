@@ -27,7 +27,9 @@
 #    --disk SIZE       data disk per VM       (default: 20GB, any size -
 #                    this is a separate disk, not the root one)
 #    --flavour NAME    desktop | server                (default: desktop)
-#    --provider NAME   vmware_desktop|virtualbox|hyperv
+#    --provider NAME   vmware_desktop|virtualbox|libvirt|parallels|hyperv
+#                      (default: detected - libvirt on Linux, parallels on macOS
+#                       when set up, else vmware_desktop, else virtualbox)
 #    --subnet A.B.C    host-only subnet                (default: 192.168.56)
 #    --box NAME        override the Vagrant box
 #    --user NAME       login created on every VM       (default: Mouhcine)
@@ -68,7 +70,7 @@ D_CPUS=2
 # VMware cannot shrink a cloned virtual disk, so it was never adjustable.
 D_DISK="20GB"
 D_FLAVOUR="desktop"
-D_PROVIDER="vmware_desktop"
+D_PROVIDER=""                 # empty = detect what this machine has
 D_SUBNET="192.168.56"
 D_BOX=""
 D_USER="Mouhcine"
@@ -118,7 +120,8 @@ FLAGS (these set the DEFAULTS; per-VM answers can still override)
   --disk SIZE       data disk per VM               (default: 20GB, any size)
   --flavour NAME    desktop | server                (default: desktop)
                     server = headless, no GUI packages installed
-  --provider NAME   vmware_desktop|virtualbox|hyperv
+  --provider NAME   vmware_desktop|virtualbox|libvirt|parallels|hyperv
+                    (default: whichever this machine is set up for)
   --subnet A.B.C    host-only subnet                (default: 192.168.56)
   --box NAME        override the Vagrant box        (default: bento/ubuntu-24.04)
   --user NAME       login created on every VM       (default: Mouhcine)
@@ -325,20 +328,55 @@ command -v vagrant >/dev/null 2>&1 || {
     Fedora  : sudo dnf install -y vagrant
 
   You also need a hypervisor:
-    vmware_desktop (default) : VMware Workstation Pro or Fusion Pro
-                               + the Vagrant VMware Utility
-    virtualbox               : https://www.virtualbox.org
+    vmware_desktop : VMware Workstation Pro (Windows, Linux) or Fusion (macOS)
+                     + the Vagrant VMware Utility
+    virtualbox     : https://www.virtualbox.org        (Windows, Linux, macOS)
+    libvirt        : KVM + the vagrant-libvirt plugin   (Linux)
+    parallels      : Parallels Desktop + vagrant-parallels (macOS)
 EOF
   exit 1
 }
 ok "vagrant $(vagrant --version 2>/dev/null | head -1)"
 
-case "$D_PROVIDER" in
+# Capture first: "vagrant plugin list | grep -q" can report failure under
+# pipefail when grep exits early and vagrant gets SIGPIPE.
+PLUGINS="$(vagrant plugin list 2>/dev/null || true)"
+has_plugin() { printf '%s\n' "$PLUGINS" | grep -q "^$1 "; }
+
+# No --provider given: suggest the one this machine is actually set up for,
+# in the order people usually prefer on each OS. It is still only a default -
+# it is asked (or can be passed), and it is written explicitly into lab.yml.
+if [ -z "$D_PROVIDER" ]; then
+  case "${HOST_PLATFORM:-}" in
+    macos)
+      if   has_plugin vagrant-parallels && command -v prlctl >/dev/null 2>&1; then D_PROVIDER=parallels
+      elif has_plugin vagrant-vmware-desktop;                                   then D_PROVIDER=vmware_desktop
+      elif command -v VBoxManage >/dev/null 2>&1;                               then D_PROVIDER=virtualbox
+      fi ;;
+    linux)
+      if   has_plugin vagrant-libvirt && command -v virsh >/dev/null 2>&1;     then D_PROVIDER=libvirt
+      elif has_plugin vagrant-vmware-desktop;                                   then D_PROVIDER=vmware_desktop
+      elif command -v VBoxManage >/dev/null 2>&1;                               then D_PROVIDER=virtualbox
+      fi ;;
+    *)
+      if   has_plugin vagrant-vmware-desktop;                                   then D_PROVIDER=vmware_desktop
+      elif command -v VBoxManage >/dev/null 2>&1 || command -v VBoxManage.exe >/dev/null 2>&1 \
+           || [ -x "/c/Program Files/Oracle/VirtualBox/VBoxManage.exe" ];      then D_PROVIDER=virtualbox
+      fi ;;
+  esac
+  if [ -n "$D_PROVIDER" ]; then
+    ok "detected provider: $D_PROVIDER"
+  else
+    D_PROVIDER="vmware_desktop"
+    warn "no hypervisor set up for Vagrant was found - defaulting to vmware_desktop"
+  fi
+fi
+
+# Checked after the provider question, so the check matches the final answer.
+check_provider() {
+case "$1" in
   vmware_desktop)
-    # Capture first: "vagrant plugin list | grep -q" can report failure under
-    # pipefail when grep exits early and vagrant gets SIGPIPE.
-    PLUGINS="$(vagrant plugin list 2>/dev/null || true)"
-    if printf '%s\n' "$PLUGINS" | grep -q vagrant-vmware-desktop; then
+    if has_plugin vagrant-vmware-desktop; then
       ok "vagrant-vmware-desktop plugin installed"
     else
       warn "vagrant-vmware-desktop plugin is missing."
@@ -369,9 +407,40 @@ case "$D_PROVIDER" in
                warn "install it from https://developer.hashicorp.com/vagrant/install/vmware" ;;
     esac
     ;;
-  virtualbox|hyperv) ok "provider: $D_PROVIDER (built into Vagrant)" ;;
-  *) die "unknown provider '$D_PROVIDER' - use vmware_desktop, virtualbox or hyperv" ;;
+  virtualbox)
+    ok "provider: virtualbox (built into Vagrant)"
+    ;;
+  libvirt)
+    [ "${HOST_PLATFORM:-}" = "linux" ] || warn "libvirt is a Linux provider - it will not work on ${HOST_PLATFORM:-this OS}"
+    if has_plugin vagrant-libvirt; then
+      ok "vagrant-libvirt plugin installed"
+    else
+      warn "vagrant-libvirt plugin is missing. On Debian/Ubuntu:"
+      warn "  sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-dev ebtables dnsmasq"
+      warn "  sudo usermod -aG libvirt \$USER    (then log out and back in)"
+      warn "  vagrant plugin install vagrant-libvirt"
+    fi
+    if command -v virsh >/dev/null 2>&1 && ! virsh -c qemu:///system list >/dev/null 2>&1; then
+      warn "cannot talk to libvirt as $(id -un) - is libvirtd running and are you in the 'libvirt' group?"
+    fi
+    ;;
+  parallels)
+    [ "${HOST_PLATFORM:-}" = "macos" ] || warn "parallels is a macOS provider - it will not work on ${HOST_PLATFORM:-this OS}"
+    command -v prlctl >/dev/null 2>&1 || warn "Parallels Desktop (prlctl) not found - it needs a Pro or Business edition"
+    if has_plugin vagrant-parallels; then
+      ok "vagrant-parallels plugin installed"
+    else
+      warn "vagrant-parallels plugin is missing - install it with:  vagrant plugin install vagrant-parallels"
+    fi
+    ;;
+  hyperv)
+    warn "hyperv is experimental here: Vagrant cannot give Hyper-V VMs the fixed IPs this"
+    warn "lab relies on, so the NFS share and the tunnel will not work. It also needs an"
+    warn "Administrator shell."
+    ;;
+  *) die "unknown provider '$1' - use vmware_desktop, virtualbox, libvirt, parallels or hyperv" ;;
 esac
+}
 
 case "$D_FLAVOUR" in
   desktop|server) : ;;
@@ -628,11 +697,8 @@ while [ "$i" -le "$COUNT" ]; do
   i=$(( i + 1 ))
 done
 
-ask PROVIDER "Provider (vmware_desktop/virtualbox/hyperv)" "$D_PROVIDER"
-case "$PROVIDER" in
-  vmware_desktop|virtualbox|hyperv) : ;;
-  *) die "unknown provider '$PROVIDER'" ;;
-esac
+ask PROVIDER "Provider (vmware_desktop/virtualbox/libvirt/parallels/hyperv)" "$D_PROVIDER"
+check_provider "$PROVIDER"
 ask SUBNET "Host-only subnet" "$D_SUBNET"
 check_subnet "$SUBNET"
 [ $(( 10 + COUNT )) -le 254 ] || die "$COUNT VMs do not fit in one subnet (addresses start at .11)"

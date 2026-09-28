@@ -37,7 +37,7 @@ end
 # #  This file is ~1200 lines of machinery; you should never need to edit it.   #
 # #                                                                            #
 # #    box             the Vagrant box to build                                #
-# #    provider        "vmware_desktop" | "virtualbox" | "hyperv"               #
+# #    provider        vmware_desktop | virtualbox | libvirt | parallels | hyperv #
 # #                     chosen explicitly, never auto-detected: the RAM/CPU     #
 # #                     and disk calls are per-provider, so a silent fallback   #
 # #                     would discard your settings without any error.         #
@@ -280,6 +280,8 @@ raise "NODES is empty - add at least one entry" if NODES.empty?
 SUPPORTED_PROVIDERS = {
   "vmware_desktop" => { label: "VMware Workstation / Fusion", tested: true },
   "virtualbox"     => { label: "Oracle VirtualBox",            tested: false },
+  "libvirt"        => { label: "libvirt / KVM (Linux)",        tested: false },
+  "parallels"      => { label: "Parallels Desktop (macOS)",    tested: false },
   "hyperv"         => { label: "Microsoft Hyper-V",            tested: false },
 }
 unless SUPPORTED_PROVIDERS.key?(PROVIDER)
@@ -306,6 +308,8 @@ end
 if _have && !_have.include?(PROVIDER)
   hint = case PROVIDER
          when "vmware_desktop" then "vagrant plugin install vagrant-vmware-desktop"
+         when "libvirt"        then "install libvirt + qemu-kvm, then: vagrant plugin install vagrant-libvirt"
+         when "parallels"      then "vagrant plugin install vagrant-parallels"
          else "#{PROVIDER} needs its Vagrant plugin installed too"
          end
   raise "the Vagrant provider plugin for #{PROVIDER.inspect} is not installed.\n  fix: #{hint}\n  installed providers: #{_have.sort.join(', ')}"
@@ -919,7 +923,18 @@ Vagrant.configure("2") do |config|
         (num * 1024).to_i                     # GB (explicit or bare) -> MB
       end
 
-      node.vm.network "private_network", ip: cfg[:ip]
+      if PROVIDER == "libvirt"
+        # libvirt creates a network for this subnet on first use and, left to
+        # itself, NATs it to the outside world. forward_mode "none" keeps it
+        # isolated like the host-only networks of the other providers (the
+        # guests still reach the internet through the management network).
+        node.vm.network "private_network", ip: cfg[:ip], libvirt__forward_mode: "none"
+        # vagrant-libvirt shares the project folder over NFS by default, which
+        # needs an NFS server and sudo on the host. Nothing here uses /vagrant.
+        node.vm.synced_folder ".", "/vagrant", disabled: true
+      else
+        node.vm.network "private_network", ip: cfg[:ip]
+      end
 
       # ---- disks -----------------------------------------------------------
       # The ROOT disk is the box's own, left exactly as it is. It cannot be made
@@ -933,13 +948,20 @@ Vagrant.configure("2") do |config|
       # :disk you configure - any size, no floor. It is formatted, mounted and
       # used by the provisioning script below, and the NFS share lives on it, so
       # "disk: 25GB" really does give you 25 GB of storage.
-      node.vm.disk :disk, size: cfg[:disk], primary: false, name: "lab-data"
+      #
+      # libvirt and Parallels do not implement Vagrant's generic disk option,
+      # so their data disk is added in their own provider block below.
+      unless %w[libvirt parallels].include?(PROVIDER)
+        node.vm.disk :disk, size: cfg[:disk], primary: false, name: "lab-data"
+      end
 
       # ---- resources -------------------------------------------------------
-      # TESTED: vmware_desktop. The other two branches are written to spec but
-      # have never been run here - no VirtualBox/Hyper-V on this machine.
+      # TESTED: vmware_desktop. The other branches are written to each
+      # provider's documentation but have never been run here.
       node.vm.provider PROVIDER do |v|
-        v.gui = cfg[:gui]
+        # Only VMware and VirtualBox have a "gui" setting; the others reject it
+        # as an unknown option and the whole config fails to validate.
+        v.gui = cfg[:gui] if %w[vmware_desktop virtualbox].include?(PROVIDER)
         case PROVIDER
         when "vmware_desktop"
           v.vmx["DisplayName"] = cfg[:label]
@@ -975,6 +997,22 @@ Vagrant.configure("2") do |config|
           v.customize ["modifyvm", :id,
                        "--memory", cfg[:ram].to_s,
                        "--cpus",   cfg[:cpus].to_s]
+        when "libvirt"
+          v.memory = cfg[:ram].to_i
+          v.cpus   = cfg[:cpus].to_i
+          # The data disk. It shows up as /dev/vdb; the guest script finds it
+          # by size and "not in use", not by name, so that is fine.
+          v.storage :file, size: "#{data_mb / 1024}G"
+          # A desktop needs a display; a server does not.
+          v.graphics_type = DESKTOP ? "spice" : "none"
+          v.video_type    = "virtio" if DESKTOP
+        when "parallels"
+          v.name   = cfg[:label]
+          v.memory = cfg[:ram].to_i
+          v.cpus   = cfg[:cpus].to_i
+          # "post-import" runs once, right after the VM is cloned from the box.
+          # The default event (pre-boot) would add another disk on every boot.
+          v.customize "post-import", ["set", :id, "--device-add", "hdd", "--size", data_mb.to_s]
         when "hyperv"
           v.cpus   = cfg[:cpus]
           v.memory = cfg[:ram]
@@ -1002,6 +1040,14 @@ Vagrant.configure("2") do |config|
         # a Guest Additions build that will not compile.
         GUEST_TOOLS="#{PROVIDER == 'vmware_desktop' ? (DESKTOP ? 'open-vm-tools-desktop' : 'open-vm-tools') : ''}"
         TOTAL_STEPS=8
+
+        # Written only once every step below has run. If Vagrant loses its SSH
+        # connection mid-way (a host busy enough to freeze the VM for a few
+        # seconds trips its keep-alive), it treats this script as finished and
+        # moves on while it is in fact still running - the next provisioner
+        # then fails in confusing ways. The marker lets it tell the difference.
+        BASE_DONE=/var/lib/vms-lab/base.done
+        rm -f "$BASE_DONE"
 
         IS_PRIMARY=0
         [ "$NODE_NAME" = "$PRIMARY_NAME" ] && IS_PRIMARY=1
@@ -1148,8 +1194,12 @@ Vagrant.configure("2") do |config|
           fi
           mkdir -p "$DATA_MNT"
           # Order matters: the data disk must be in fstab before the bind below.
+          # By label, not device name: /dev/sdX order is not stable across
+          # boots (the SCSI data disk and SATA system disk can swap), and a
+          # wrong device here drops the VM into emergency mode. nofail lets
+          # it boot even if the disk is missing.
           grep -q "labdata" /etc/fstab || \
-            echo "$DATA_DEV $DATA_MNT ext4 defaults,noatime 0 2" >> /etc/fstab
+            echo "LABEL=labdata $DATA_MNT ext4 defaults,noatime,nofail 0 2" >> /etc/fstab
           mountpoint -q "$DATA_MNT" || mount "$DATA_MNT" || true
         fi
 
@@ -1160,7 +1210,7 @@ Vagrant.configure("2") do |config|
           mkdir -p "$DATA_MNT/live_share"
           mountpoint -q "$SHARED_DIR" || mount --bind "$DATA_MNT/live_share" "$SHARED_DIR" || true
           grep -q "bind" /etc/fstab || \
-            echo "$DATA_MNT/live_share $SHARED_DIR none bind 0 0" >> /etc/fstab
+            echo "$DATA_MNT/live_share $SHARED_DIR none bind,nofail,x-systemd.requires-mounts-for=$DATA_MNT 0 0" >> /etc/fstab
         fi
 
         # Pin live_share directly to GNOME Files left sidebar
@@ -1199,7 +1249,7 @@ Vagrant.configure("2") do |config|
           echo "   $(draw_bar 100) | NFS export ready for $EXPORT_CIDR"
         else
           if ! grep -q "$PRIMARY_IP:$SHARED_DIR" /etc/fstab; then
-            echo "$PRIMARY_IP:$SHARED_DIR $SHARED_DIR nfs defaults,timeo=14,intr 0 0" >> /etc/fstab
+            echo "$PRIMARY_IP:$SHARED_DIR $SHARED_DIR nfs defaults,_netdev,nofail,timeo=14,intr 0 0" >> /etc/fstab
           fi
           # Hosts provision in parallel, so a peer can reach this step minutes
           # before the primary finishes installing the desktop and starts its
@@ -1292,6 +1342,8 @@ EOF
         fi
         echo ""
 
+        install -d -m 755 "$(dirname "$BASE_DONE")"
+        date > "$BASE_DONE"
         echo "==> Deployment of $NODE_NAME is complete!"
       SHELL
 
@@ -1374,10 +1426,26 @@ EOF
         done_bar() { echo "   [$(bar 100)] $1"; echo ""; }
         fail() { echo "   !! $1"; echo ""; exit 1; }
 
+        # The base setup must really have finished (see BASE_DONE there).
+        # Wait a while in case it is still running after a dropped connection.
+        for i in $(seq 1 60); do
+          [ -f /var/lib/vms-lab/base.done ] && break
+          [ "$i" = 1 ] && echo "   waiting for the base setup of $NODE_NAME to finish..."
+          sleep 10
+        done
+        if [ ! -f /var/lib/vms-lab/base.done ]; then
+          echo "   !! the base setup of $NODE_NAME never finished (user, packages, share)."
+          echo "      Most likely Vagrant lost its SSH connection while the host was busy."
+          echo "      Fix it with:   vagrant provision $NODE_NAME"
+          exit 1
+        fi
+
         # --- 1 -------------------------------------------------------------
         hdr 1 "Installing SSH + tunnel tooling"
-        apt-get update -qq
-        apt-get install -y -qq openssh-server openssh-client autossh curl
+        # Lock timeout: unattended-upgrades often holds dpkg right after boot.
+        apt-get -o DPkg::Lock::Timeout=300 update -qq
+        apt-get -o DPkg::Lock::Timeout=300 install -y -qq openssh-server openssh-client autossh curl \
+          || fail "could not install openssh-server/autossh/curl - see the apt error above, then: vagrant provision $NODE_NAME"
         command -v autossh >/dev/null 2>&1 || echo "   (autossh unavailable, using the plain ssh retry loop)"
         done_bar "openssh-server / openssh-client / autossh / curl ready"
 

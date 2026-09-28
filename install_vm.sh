@@ -25,7 +25,9 @@
 #                                                          2 server)
 #    --disk SIZE      grow the root disk to SIZE        (default: box size, 64GB)
 #    --box NAME       override the box                  (default: bento/ubuntu-24.04)
-#    --provider NAME  vmware_desktop|virtualbox|hyperv  (default: vmware_desktop)
+#    --provider NAME  vmware_desktop|virtualbox|libvirt|parallels|hyperv
+#                     (default: detected - libvirt on Linux, parallels on macOS
+#                      when set up, else vmware_desktop, else virtualbox)
 #    --no-window      boot with the hypervisor window closed
 #    --no-up          write the Vagrantfile but do not boot
 #    -h, --help       this text
@@ -44,7 +46,7 @@ VM_RAM=""
 VM_CPUS=""
 VM_DISK=""
 VM_BOX=""
-PROVIDER="vmware_desktop"
+PROVIDER=""                  # empty = detect what this machine has
 GUI=""
 NO_UP=0
 # bento/ubuntu-24.04 ships a 64 GB root disk. A disk can only be grown, never
@@ -85,7 +87,8 @@ FLAGS
   --cpus N         vCPUs                             (default: 4 desktop / 2 server)
   --disk SIZE      grow the root disk to SIZE, e.g. 100GB (default: the box's 64GB)
   --box NAME       override the box                  (default: bento/ubuntu-24.04)
-  --provider NAME  vmware_desktop|virtualbox|hyperv  (default: vmware_desktop)
+  --provider NAME  vmware_desktop|virtualbox|libvirt|parallels|hyperv
+                   (default: whichever this machine is set up for)
   --no-window      boot with the hypervisor window closed
   --no-up          write the Vagrantfile but do not boot
   -h, --help       this text
@@ -156,7 +159,7 @@ to_gb() { # whole GB from 100, 100GB or 1TB; empty on bad input
   esac
 }
 
-case "$PROVIDER" in vmware_desktop|virtualbox|hyperv) : ;; *) die "unknown provider '$PROVIDER' - use vmware_desktop, virtualbox or hyperv" ;; esac
+case "$PROVIDER" in ''|vmware_desktop|virtualbox|libvirt|parallels|hyperv) : ;; *) die "unknown provider '$PROVIDER' - use vmware_desktop, virtualbox, libvirt, parallels or hyperv" ;; esac
 case "$VM_NAME" in ''|-*|*-|*[!A-Za-z0-9-]*) die "--name must be a hostname: letters, digits and - (not at either end)" ;; esac
 [ "${#VM_NAME}" -le 63 ] || die "--name is longer than 63 characters"
 case "$VM_CPUS" in ''|*[!0-9]*|0) die "--cpus must be a whole number of at least 1" ;; esac
@@ -191,12 +194,37 @@ command -v vagrant >/dev/null 2>&1 || {
 }
 ok "vagrant $(vagrant --version 2>/dev/null | head -1)"
 
+# Capture first: "vagrant plugin list | grep -q" can fail under pipefail
+# when grep exits early and vagrant gets SIGPIPE.
+PLUGINS="$(vagrant plugin list 2>/dev/null || true)"
+has_plugin() { printf '%s\n' "$PLUGINS" | grep -q "^$1 "; }
+
+# No --provider: use the one this machine is set up for.
+if [ -z "$PROVIDER" ]; then
+  case "$(uname -s 2>/dev/null)" in
+    Darwin)
+      if   has_plugin vagrant-parallels && command -v prlctl >/dev/null 2>&1; then PROVIDER=parallels
+      elif has_plugin vagrant-vmware-desktop;                                   then PROVIDER=vmware_desktop
+      elif command -v VBoxManage >/dev/null 2>&1;                               then PROVIDER=virtualbox
+      fi ;;
+    Linux)
+      if   has_plugin vagrant-libvirt && command -v virsh >/dev/null 2>&1;     then PROVIDER=libvirt
+      elif has_plugin vagrant-vmware-desktop;                                   then PROVIDER=vmware_desktop
+      elif command -v VBoxManage >/dev/null 2>&1;                               then PROVIDER=virtualbox
+      fi ;;
+    *)
+      if   has_plugin vagrant-vmware-desktop;                                   then PROVIDER=vmware_desktop
+      elif command -v VBoxManage >/dev/null 2>&1 || [ -x "/c/Program Files/Oracle/VirtualBox/VBoxManage.exe" ]; then PROVIDER=virtualbox
+      fi ;;
+  esac
+  if [ -n "$PROVIDER" ]; then ok "detected provider: $PROVIDER"
+  else PROVIDER=vmware_desktop; warn "no hypervisor set up for Vagrant was found - defaulting to vmware_desktop"
+  fi
+fi
+
 case "$PROVIDER" in
   vmware_desktop)
-    # Capture first: "vagrant plugin list | grep -q" can fail under pipefail
-    # when grep exits early and vagrant gets SIGPIPE.
-    PLUGINS="$(vagrant plugin list 2>/dev/null || true)"
-    if printf '%s\n' "$PLUGINS" | grep -q vagrant-vmware-desktop; then
+    if has_plugin vagrant-vmware-desktop; then
       ok "vagrant-vmware-desktop plugin installed"
     else
       warn "vagrant-vmware-desktop plugin is missing - install it with:"
@@ -205,7 +233,19 @@ case "$PROVIDER" in
       warn "  https://developer.hashicorp.com/vagrant/install/vmware"
     fi
     ;;
-  virtualbox|hyperv) ok "provider: $PROVIDER" ;;
+  libvirt)
+    has_plugin vagrant-libvirt && ok "vagrant-libvirt plugin installed" || {
+      warn "vagrant-libvirt plugin is missing. On Debian/Ubuntu:"
+      warn "  sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-dev ebtables dnsmasq"
+      warn "  sudo usermod -aG libvirt \$USER    (then log out and back in)"
+      warn "  vagrant plugin install vagrant-libvirt"
+    } ;;
+  parallels)
+    has_plugin vagrant-parallels && ok "vagrant-parallels plugin installed" || {
+      warn "vagrant-parallels plugin is missing - install it with:  vagrant plugin install vagrant-parallels"
+    } ;;
+  virtualbox) ok "provider: virtualbox" ;;
+  hyperv) warn "hyperv is untested here and needs an Administrator shell" ;;
 esac
 
 if [ -e "$VM_NAME" ] && [ -n "$(ls -A "$VM_NAME" 2>/dev/null)" ]; then
@@ -233,7 +273,20 @@ Vagrant.configure("2") do |config|
   config.vm.hostname = "$VM_NAME"
 
   # Host-only network: reachable from the host and other lab VMs, not the internet.
+VAGRANTFILE
+if [ "$PROVIDER" = "libvirt" ]; then
+  cat >> "$VF" <<VAGRANTFILE
+  # forward_mode none: isolated, instead of libvirt's default NAT network.
+  config.vm.network "private_network", ip: "$VM_IP", libvirt__forward_mode: "none"
+  # libvirt shares /vagrant over NFS by default (needs a host NFS server + sudo).
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+VAGRANTFILE
+else
+  cat >> "$VF" <<VAGRANTFILE
   config.vm.network "private_network", ip: "$VM_IP"
+VAGRANTFILE
+fi
+cat >> "$VF" <<VAGRANTFILE
 
   config.vm.provider "$PROVIDER" do |v|
 VAGRANTFILE
@@ -257,6 +310,29 @@ VAGRANTFILE
   end
 VAGRANTFILE
     ;;
+  libvirt)
+    cat >> "$VF" <<VAGRANTFILE
+    v.memory = $VM_RAM_MB
+    v.cpus   = $VM_CPUS
+VAGRANTFILE
+    if [ "$KIND" = "desktop" ]; then
+      printf '    v.graphics_type = "spice"\n    v.video_type    = "virtio"\n' >> "$VF"
+    fi
+    # vagrant-libvirt grows the root disk itself (it has no generic disk option)
+    [ -n "$DISK_GB" ] && printf '    v.machine_virtual_size = %s\n' "$DISK_GB" >> "$VF"
+    printf '  end\n' >> "$VF"
+    ;;
+  parallels)
+    cat >> "$VF" <<VAGRANTFILE
+    v.name   = "$VM_NAME"
+    v.memory = $VM_RAM_MB
+    v.cpus   = $VM_CPUS
+VAGRANTFILE
+    # No generic disk option either: resize the system disk once, right
+    # after the clone ("post-import"), not on every boot.
+    [ -n "$DISK_GB" ] && printf '    v.customize "post-import", ["set", :id, "--device-set", "hdd0", "--size", "%s"]\n' "$((DISK_GB * 1024))" >> "$VF"
+    printf '  end\n' >> "$VF"
+    ;;
   hyperv)
     cat >> "$VF" <<VAGRANTFILE
     v.vmname = "$VM_NAME"
@@ -271,11 +347,16 @@ if [ -n "$DISK_GB" ]; then
   # Growing the virtual disk does not grow the partition or filesystem inside
   # it, so the space would sit unused. The provisioner extends the root
   # partition, then LVM (bento uses it) or the filesystem, to fill the disk.
-  cat >> "$VF" <<VAGRANTFILE
+  # libvirt and Parallels resized the disk in their provider block above.
+  case "$PROVIDER" in
+    libvirt|parallels) printf '\n  # Root disk grown to %sGB above, then filled below.\n' "$DISK_GB" >> "$VF" ;;
+    *) cat >> "$VF" <<VAGRANTFILE
 
   # Root disk grown to ${DISK_GB}GB (the box ships ${BENTO_DISK_GB}GB), then filled below.
   config.vm.disk :disk, size: "${DISK_GB}GB", primary: true
 VAGRANTFILE
+    ;;
+  esac
   cat >> "$VF" <<'VAGRANTFILE'
   config.vm.provision "grow-root", type: "shell", inline: <<-'SHELL'
     set -e

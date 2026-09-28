@@ -6,7 +6,8 @@
 # =============================================================================
 
 box: bento/ubuntu-24.04          # "bento/ubuntu-24.04" | "bento/ubuntu-22.04" | ...
-provider: vmware_desktop        # "vmware_desktop" (tested) | "virtualbox" | "hyperv"
+provider: vmware_desktop        # vmware_desktop (tested) | virtualbox | libvirt (Linux)
+                                 #   | parallels (macOS) | hyperv
                                  #   never auto-detected - see the Vagrantfile
 subnet: "192.168.56"            # host-only segment, never routed to the internet
 

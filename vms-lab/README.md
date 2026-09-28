@@ -7,10 +7,25 @@ Run these as **your normal user, not with `sudo`**. Vagrant stores boxes, plugin
 ## Requirements
 
 - [Vagrant](https://developer.hashicorp.com/vagrant/install)
-- A hypervisor:
-  - **VMware Workstation Pro / Fusion Pro** (tested). Also install the plugin with `vagrant plugin install vagrant-vmware-desktop` and the [Vagrant VMware Utility](https://developer.hashicorp.com/vagrant/install/vmware).
-  - VirtualBox or Hyper-V: written to spec but untested.
-- Windows only: [Git for Windows](https://git-scm.com/download/win), which provides the bash the scripts run in.
+- A hypervisor. The scripts pick the one your machine is set up for; `--provider` overrides that.
+
+| Provider | Windows | Linux | macOS | Extra setup | Status |
+|---|:---:|:---:|:---:|---|---|
+| `vmware_desktop` | ✓ | ✓ | ✓ | `vagrant plugin install vagrant-vmware-desktop` + [Vagrant VMware Utility](https://developer.hashicorp.com/vagrant/install/vmware) | tested (Windows) |
+| `virtualbox` | ✓ | ✓ | ✓ | none | untested |
+| `libvirt` (KVM) | | ✓ | | libvirt + `vagrant plugin install vagrant-libvirt` (see below) | untested |
+| `parallels` | | | ✓ | Parallels Desktop Pro/Business + `vagrant plugin install vagrant-parallels` | untested |
+| `hyperv` | ✓ | | | Administrator shell | experimental: no fixed IPs, so the share and tunnel don't work |
+
+  On Apple Silicon Macs, Vagrant downloads the ARM build of the Ubuntu box automatically.
+
+  libvirt on Debian/Ubuntu:
+  ```bash
+  sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-dev ebtables dnsmasq
+  sudo usermod -aG libvirt "$USER"    # then log out and back in
+  vagrant plugin install vagrant-libvirt
+  ```
+- Windows only: [Git for Windows](https://git-scm.com/download/win), which provides the bash the scripts run in. The Windows command offers to install it for you.
 
 ## A multi-VM lab
 
